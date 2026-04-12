@@ -1,3 +1,6 @@
+/* ===== SUPABASE IMPORT ===== */
+import { supabase } from './supabaseClient.js';
+
 /* ===== DATA ===== */
 var professionals = {
   'Rhai': ['Nanopigmentação','Design de sobrancelhas','Henna','Coloração de sobrancelhas','Epilação Buço','Epilação Queixo','Epilação Rosto','Lash lifting','Brow lamination','Mega Hair','Escova','Babyliss'],
@@ -5,12 +8,7 @@ var professionals = {
   'Pablo': ['Corte','Mechas','Penteado','Escova','Babyliss']
 };
 
-var clients = [
-  { nome: 'Maria Silva', telefone: '(31) 99999-1111', nascimento: '1995-04-12' },
-  { nome: 'Ana Souza', telefone: '(31) 99999-2222', nascimento: '1990-06-15' },
-  { nome: 'Carla Lima', telefone: '(31) 99999-3333', nascimento: '1985-03-22' }
-];
-
+var clients = [];
 var appointments = [];
 
 var MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -21,13 +19,62 @@ var currentMonth = today.getMonth();
 var currentYear = today.getFullYear();
 var selectedDay = today.getDate();
 
+/* ===== SUPABASE HELPERS ===== */
+async function loadClients() {
+  var { data, error } = await supabase.from('clientes').select('*').order('nome');
+  if (error) { console.error('Erro ao carregar clientes:', error); return; }
+  clients = data.map(function(c) {
+    return { nome: c.nome, telefone: c.telefone, nascimento: c.nascimento || '' };
+  });
+}
+
+async function loadAppointments() {
+  var { data, error } = await supabase.from('agendamentos').select('*');
+  if (error) { console.error('Erro ao carregar agendamentos:', error); return; }
+  appointments = data.map(function(a) {
+    return {
+      cliente: a.cliente,
+      telefone: a.telefone,
+      profissional: a.profissional,
+      servico: a.servico,
+      data: a.data,
+      hora: a.hora.substring(0, 5) // "HH:MM:SS" → "HH:MM"
+    };
+  });
+}
+
+async function insertClient(clientObj) {
+  var row = { nome: clientObj.nome, telefone: clientObj.telefone };
+  if (clientObj.nascimento) row.nascimento = clientObj.nascimento;
+  var { error } = await supabase.from('clientes').insert([row]);
+  if (error) { console.error('Erro ao salvar cliente:', error); return false; }
+  return true;
+}
+
+async function insertAppointment(apt) {
+  var { error } = await supabase.from('agendamentos').insert([{
+    cliente: apt.cliente,
+    telefone: apt.telefone,
+    profissional: apt.profissional,
+    servico: apt.servico,
+    data: apt.data,
+    hora: apt.hora
+  }]);
+  if (error) { console.error('Erro ao salvar agendamento:', error); return false; }
+  return true;
+}
+
 /* ===== INIT ===== */
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
   // Auth check
   if (!sessionStorage.getItem('logged')) {
     window.location.href = 'index.html';
     return;
   }
+
+  // Load data from Supabase
+  await loadClients();
+  await loadAppointments();
 
   // Navigation
   document.querySelectorAll('.nav-btn').forEach(function(btn) {
@@ -138,7 +185,6 @@ function renderCalendar() {
   var container = document.getElementById('calendar-days');
   container.innerHTML = '';
 
-  // Empty cells
   for (var i = 0; i < firstDay; i++) {
     var empty = document.createElement('div');
     empty.className = 'calendar-day empty';
@@ -154,7 +200,6 @@ function renderCalendar() {
     }
     if (d === selectedDay) btn.classList.add('selected');
 
-    // Check if day has appointments
     var dateStr = currentYear + '-' + pad(currentMonth + 1) + '-' + pad(d);
     var hasApt = appointments.some(function(a) { return a.data === dateStr; });
     if (hasApt) btn.classList.add('has-appointment');
@@ -196,7 +241,7 @@ function renderDayDetail() {
 }
 
 /* ===== SAVE APPOINTMENT ===== */
-function saveAppointment(e) {
+async function saveAppointment(e) {
   e.preventDefault();
   var apt = {
     cliente: document.getElementById('ag-cliente').value.trim(),
@@ -209,9 +254,11 @@ function saveAppointment(e) {
 
   if (!apt.cliente || !apt.telefone || !apt.profissional || !apt.servico || !apt.data || !apt.hora) return;
 
+  var ok = await insertAppointment(apt);
+  if (!ok) { showToast('Erro ao salvar agendamento!'); return; }
+
   appointments.push(apt);
 
-  // Navigate to that date
   var parts = apt.data.split('-');
   currentYear = parseInt(parts[0]);
   currentMonth = parseInt(parts[1]) - 1;
@@ -229,7 +276,6 @@ function saveAppointment(e) {
 
 /* ===== CLIENTS ===== */
 function renderClients() {
-  // Birthday banner
   var todayStr = pad(today.getMonth() + 1) + '-' + pad(today.getDate());
   var birthdayClients = clients.filter(function(c) {
     if (!c.nascimento) return false;
@@ -246,7 +292,6 @@ function renderClients() {
     banner.style.display = 'none';
   }
 
-  // Table
   var tbody = document.getElementById('clients-tbody');
   tbody.innerHTML = '';
   clients.forEach(function(c) {
@@ -264,13 +309,18 @@ function renderClients() {
   });
 }
 
-function saveClient(e) {
+async function saveClient(e) {
   e.preventDefault();
   var nome = document.getElementById('cl-nome').value.trim();
   var telefone = document.getElementById('cl-telefone').value.trim();
   var nascimento = document.getElementById('cl-nascimento').value;
   if (!nome || !telefone) return;
-  clients.push({ nome: nome, telefone: telefone, nascimento: nascimento });
+
+  var clientObj = { nome: nome, telefone: telefone, nascimento: nascimento };
+  var ok = await insertClient(clientObj);
+  if (!ok) { showToast('Erro ao salvar cliente!'); return; }
+
+  clients.push(clientObj);
   closeModal('modal-cliente');
   document.getElementById('form-cliente').reset();
   renderClients();
