@@ -3,160 +3,189 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RHAI Beauty Salon - Sistema</title>
-  <meta name="description" content="Sistema de agendamento do salão RHAI Beauty Salon">
+  <title>Beauty Lounge Jurerê - Sistema</title>
+  <meta name="description" content="Sistema de agendamento do salão Beauty Lounge Jurerê">
   <link rel="stylesheet" href="estilos.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body>
 
-  <div class="layout">
-    <aside class="sidebar">
-      <div class="logo-section">
-        <div class="logo-icon">
-          <img src="logo.png" alt="RHAI Beauty Salon" style="width: 48px; height: 48px; border-radius: 12px;">
-        </div>
-        <div>
+  <!-- Hamburger mobile -->
+  <button class="hamburger" id="hamburger"><i class="fa-solid fa-bars"></i></button>
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <div class="app-layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <button class="close-sidebar" id="close-sidebar"><i class="fa-solid fa-xmark"></i></button>
+      <div class="sidebar-header">
+        <img src="logo.png" alt="Beauty Lounge">
+        <div class="brand">
           <h2>BEAUTY LOUNGE</h2>
           <p>Jurerê</p>
         </div>
       </div>
 
-      <nav>
-        <a href="#" class="nav-link active" data-section="agendamentos">Agendamentos</a>
-        <a href="#" class="nav-link" data-section="clientes">Clientes</a>
-        <a href="#" class="nav-link" data-section="profissionais">Profissionais</a>
+      <nav class="sidebar-nav">
+        <button class="nav-btn active" data-page="agendamentos">
+          <i class="fa-regular fa-calendar"></i> Agendamentos
+        </button>
+        <button class="nav-btn" data-page="clientes">
+          <i class="fa-regular fa-user"></i> Clientes
+        </button>
+        <button class="nav-btn" data-page="profissionais">
+          <i class="fa-solid fa-scissors"></i> Profissionais
+        </button>
       </nav>
 
-      <a href="index.html" class="nav-link logout"> Sair</a>
+      <div class="sidebar-footer">
+        <button class="btn-sair" id="btn-sair">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i> Sair
+        </button>
+      </div>
     </aside>
 
+    <!-- MAIN -->
     <main class="main-content">
 
-      <section id="section-agendamentos" class="section active">
-        <div class="section-header">
-          <h1>Agendamentos</h1>
-          <button class="btn-primary" id="btnNovoAgendamento"> Novo</button>
+      <!-- AGENDAMENTOS -->
+      <div class="page active" id="page-agendamentos">
+        <div class="page-header">
+          <h2>Agendamentos</h2>
+          <button class="btn-novo" id="btn-novo-agendamento">
+            <i class="fa-solid fa-plus"></i> Novo
+          </button>
         </div>
 
-        <div class="agenda-layout">
-          <div class="calendar-panel">
+        <div class="agenda-grid">
+          <div class="calendar-card">
             <div class="calendar-nav">
-              <button id="prevMonth">&lt;</button>
-              <span id="mesAno"></span>
-              <button id="nextMonth">&gt;</button>
+              <button id="prev-month"><i class="fa-solid fa-chevron-left"></i></button>
+              <span class="month-year" id="month-year"></span>
+              <button id="next-month"><i class="fa-solid fa-chevron-right"></i></button>
             </div>
             <div class="calendar-weekdays">
               <span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span>
             </div>
-            <div class="calendar-days" id="calendarDays"></div>
+            <div class="calendar-days" id="calendar-days"></div>
           </div>
 
-          <div class="agenda-list" id="listaAgendamentos">
-            <div class="empty-state">
-              <p>Selecione uma data para ver os agendamentos</p>
+          <div class="day-detail-card">
+            <div class="day-detail-header" id="day-detail-header">Selecione uma data</div>
+            <div id="day-appointments">
+              <div class="no-appointments">
+                <i class="fa-regular fa-clock"></i>
+                <p>Selecione uma data para ver os agendamentos</p>
+              </div>
             </div>
           </div>
         </div>
-      </section>
+      </div>
 
-      <section id="section-clientes" class="section">
-        <div class="section-header">
-          <h1>Clientes</h1>
-          <button class="btn-primary" id="btnNovoCliente"> Novo Cliente</button>
+      <!-- CLIENTES -->
+      <div class="page" id="page-clientes">
+        <div class="page-header">
+          <h2>Clientes</h2>
+          <button class="btn-novo" id="btn-novo-cliente">
+            <i class="fa-solid fa-plus"></i> Novo Cliente
+          </button>
         </div>
 
-        <div id="clientesGrid" class="clients-grid"></div>
+        <div class="birthday-banner" id="birthday-banner" style="display:none;"></div>
 
-        <div class="table-container">
-          <table>
+        <div class="clients-table-wrapper">
+          <table class="clients-table">
             <thead>
               <tr>
                 <th>Nome</th><th>Telefone</th><th>Nascimento</th>
               </tr>
             </thead>
-            <tbody id="tabelaClientes">
-            </tbody>
+            <tbody id="clients-tbody"></tbody>
           </table>
         </div>
-      </section>
+      </div>
 
-      <section id="section-profissionais" class="section">
-        <div class="section-header">
-          <h1>Profissionais & Serviços</h1>
+      <!-- PROFISSIONAIS -->
+      <div class="page" id="page-profissionais">
+        <div class="page-header">
+          <h2>Profissionais & Serviços</h2>
         </div>
-        <div id="profissionaisGrid" class="professionals-grid"></div>
-      </section>
+        <div class="professionals-grid" id="professionals-grid"></div>
+      </div>
 
     </main>
   </div>
 
-  <div class="modal-overlay" id="modalAgendamento">
+  <!-- MODAL AGENDAMENTO -->
+  <div class="modal-overlay" id="modal-agendamento">
     <div class="modal">
       <div class="modal-header">
-        <h2>Novo Agendamento</h2>
-        <button class="modal-close" id="fecharModalAgendamento">&times;</button>
+        <h3>Novo Agendamento</h3>
+        <button class="modal-close" id="close-agendamento"><i class="fa-solid fa-xmark"></i></button>
       </div>
-      <form id="formAgendamento">
+      <form id="form-agendamento">
         <div class="form-group">
           <label>Cliente</label>
-          <input type="text" id="agCliente" required>
+          <input type="text" id="ag-cliente" required>
         </div>
         <div class="form-group">
           <label>Telefone</label>
-          <input type="tel" id="agTelefone" required>
+          <input type="tel" id="ag-telefone" required>
         </div>
         <div class="form-row">
           <div class="form-group">
             <label>Profissional</label>
-            <select id="agProfissional"><option value="">Selecione...</option></select>
+            <select id="ag-profissional"><option value="">Selecione...</option></select>
           </div>
           <div class="form-group">
             <label>Serviço</label>
-            <select id="agServico"><option value="">Selecione...</option></select>
+            <select id="ag-servico"><option value="">Selecione...</option></select>
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
             <label>Data</label>
-            <input type="date" id="agData" required>
+            <input type="date" id="ag-data" required>
           </div>
           <div class="form-group">
             <label>Hora</label>
-            <input type="time" id="agHora" required>
+            <input type="time" id="ag-hora" required>
           </div>
         </div>
-        <div class="form-actions">
-          <button type="button" class="btn-secondary" id="cancelarAgendamento">Cancelar</button>
-          <button type="submit" class="btn-primary">Agendar</button>
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" id="cancel-agendamento">Cancelar</button>
+          <button type="submit" class="btn-submit">Agendar</button>
         </div>
       </form>
     </div>
   </div>
 
-  <div class="modal-overlay" id="modalCliente">
+  <!-- MODAL CLIENTE -->
+  <div class="modal-overlay" id="modal-cliente">
     <div class="modal">
       <div class="modal-header">
-        <h2>Novo Cliente</h2>
-        <button class="modal-close" id="fecharModalCliente">&times;</button>
+        <h3>Novo Cliente</h3>
+        <button class="modal-close" id="close-cliente"><i class="fa-solid fa-xmark"></i></button>
       </div>
-      <form id="formCliente">
+      <form id="form-cliente">
         <div class="form-group">
           <label>Nome</label>
-          <input type="text" id="clNome" required>
+          <input type="text" id="cl-nome" required>
         </div>
         <div class="form-group">
           <label>Telefone</label>
-          <input type="tel" id="clTelefone" required>
+          <input type="tel" id="cl-telefone" required>
         </div>
         <div class="form-group">
           <label>Data de Nascimento</label>
-          <input type="date" id="clNascimento">
+          <input type="date" id="cl-nascimento">
         </div>
-        <div class="form-actions">
-          <button type="button" class="btn-secondary" id="cancelarCliente">Cancelar</button>
-          <button type="submit" class="btn-primary">Cadastrar</button>
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" id="cancel-cliente">Cancelar</button>
+          <button type="submit" class="btn-submit">Cadastrar</button>
         </div>
       </form>
     </div>
