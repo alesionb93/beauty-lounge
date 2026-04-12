@@ -359,6 +359,7 @@ body {
   transition: all var(--transition);
   margin: 0 auto;
   font-family: var(--font);
+  position: relative;
 }
 
 .calendar-day:hover { background: var(--bg-card-hover); }
@@ -374,7 +375,6 @@ body {
   background: var(--gold);
   border-radius: 50%;
 }
-.calendar-day { position: relative; }
 
 .day-detail-header {
   font-size: 1.15rem;
@@ -406,6 +406,17 @@ body {
   padding: 16px;
   margin-bottom: 12px;
   animation: fadeIn 0.3s ease;
+}
+
+.appointment-item.clickable {
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.appointment-item.clickable:hover {
+  border-color: var(--gold);
+  background: #1e1e1e;
+  transform: translateX(4px);
 }
 
 .appointment-item .time {
@@ -480,6 +491,16 @@ body {
 .clients-table .birthday-icon {
   color: var(--gold);
   margin-left: 6px;
+}
+
+.client-row-clickable {
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.client-row-clickable:hover td {
+  background: var(--bg-card-hover) !important;
+  color: var(--gold);
 }
 
 /* ===== PROFISSIONAIS ===== */
@@ -565,6 +586,12 @@ body {
   animation: slideUp 0.3s ease;
 }
 
+.modal-historico {
+  max-width: 640px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
 .modal-header {
   display: flex;
   align-items: center;
@@ -622,6 +649,12 @@ body {
   border-color: var(--gold);
 }
 
+.form-group input[readonly] {
+  background: #111;
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
 .form-group select option {
   background: #1a1a1a;
   color: var(--text);
@@ -672,6 +705,142 @@ body {
   box-shadow: 0 4px 16px rgba(200,164,90,0.3);
   transform: translateY(-1px);
 }
+
+/* ===== FEEDBACK DE IDENTIFICAÇÃO ===== */
+.id-feedback {
+  min-height: 20px;
+  font-size: 0.9rem;
+  margin-top: 8px;
+  margin-bottom: 4px;
+  text-align: center;
+}
+
+.id-feedback.success { color: #4ade80; }
+.id-feedback.error { color: #f87171; }
+.id-feedback.loading { color: var(--gold); }
+
+/* ===== COLOR DROPDOWN (Feature 2) ===== */
+.color-dropdown {
+  position: relative;
+}
+
+.color-dropdown-trigger {
+  width: 100%;
+  padding: 12px 14px;
+  background: #1a1a1a;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: border var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.color-dropdown-trigger:hover {
+  border-color: var(--gold);
+}
+
+.color-dropdown-options {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #1a1a1a;
+  border: 1px solid var(--gold-border);
+  border-radius: 8px;
+  margin-top: 4px;
+  z-index: 10;
+  overflow: hidden;
+  animation: fadeIn 0.2s ease;
+}
+
+.color-dropdown-options.open { display: block; }
+
+.color-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background var(--transition);
+  font-size: 0.95rem;
+}
+
+.color-option:hover {
+  background: var(--bg-card-hover);
+}
+
+.color-swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.color-swatch-inline {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  vertical-align: middle;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* ===== HISTÓRICO (Feature 4) ===== */
+.historico-card-info {
+  background: var(--bg-card-hover);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.historico-card-info p {
+  margin-bottom: 6px;
+  font-size: 0.95rem;
+}
+
+.historico-card-info p:last-child { margin-bottom: 0; }
+
+.historico-card-info strong {
+  color: var(--gold);
+}
+
+.historico-loading, .historico-vazio {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 24px 0;
+}
+
+.historico-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.historico-table th {
+  text-align: left;
+  padding: 10px 14px;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+}
+
+.historico-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+.historico-table tr:last-child td { border-bottom: none; }
+.historico-table tr:hover td { background: var(--bg-card-hover); }
 
 /* ===== TOAST ===== */
 .toast {
@@ -762,6 +931,16 @@ body {
     margin-left: 0;
     padding: 20px 16px;
     padding-top: 64px;
+  }
+
+  /* Feature 6: z-index do header/hamburger corrigido */
+  .page-header {
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 50;
+    padding: 12px 0;
+    margin-top: -12px;
   }
 
   .agenda-grid {
