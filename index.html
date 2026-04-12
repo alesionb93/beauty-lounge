@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RHAI Beauty Salon - Login</title>
+  <meta name="description" content="Sistema de agendamento do salão RHAI Beauty Salon">
+  <link rel="stylesheet" href="estilos.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="login-wrapper">
+    <div class="login-card">
+      <img src="logo.png" alt="RHAI Beauty Salon" class="logo-img">
+      <h1>BEAUTY LOUNGE</h1>
+      <p class="subtitle">Salão de Beleza</p>
+      <div class="form-group">
+        <input type="text" id="login-user" placeholder="Usuário" autocomplete="username">
+      </div>
+      <div class="form-group">
+        <input type="password" id="login-pass" placeholder="Senha" autocomplete="current-password">
+      </div>
+      <button class="btn-login" id="btn-login">Entrar</button>
+      <p class="login-error" id="login-error">Usuário ou senha inválidos</p>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('btn-login').addEventListener('click', login);
+    document.getElementById('login-pass').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') login();
+    });
+    document.getElementById('login-user').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') document.getElementById('login-pass').focus();
+    });
+
+    function login() {
+      var user = document.getElementById('login-user').value.trim();
+      var pass = document.getElementById('login-pass').value;
+      if (user === 'rhai' && pass === 'Rhai123@@') {
+        sessionStorage.setItem('logged', 'true');
+        window.location.href = 'agenda.html';
+      } else {
+        var err = document.getElementById('login-error');
+        err.style.display = 'block';
+        setTimeout(function() { err.style.display = 'none'; }, 3000);
+      }
+    }
+  </script>
+</body>
+</html>
