@@ -118,12 +118,14 @@ function switchPage(page) {
 /* ===== SIDEBAR MOBILE ===== */
 function openSidebar() {
   document.getElementById('sidebar').classList.add('open');
+  document.getElementById('hamburger').style.display = 'none';
   document.getElementById('sidebar-overlay').classList.add('active');
   document.body.style.overflow = 'hidden';
 }
 
 function closeSidebar() {
   document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('hamburger').style.display = '';
   document.getElementById('sidebar-overlay').classList.remove('active');
   document.body.style.overflow = '';
 }
