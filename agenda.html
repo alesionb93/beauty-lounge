@@ -8,21 +8,18 @@
   <link rel="stylesheet" href="estilos.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body>
 
-  <!-- HAMBURGER MOBILE -->
-  <button class="hamburger" id="hamburger">
-    <i class="fa-solid fa-bars"></i>
-  </button>
+  <!-- Hamburger -->
+  <button class="hamburger" id="hamburger"><i class="fa-solid fa-bars"></i></button>
 
-  <!-- SIDEBAR OVERLAY -->
+  <!-- Sidebar overlay -->
   <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
   <div class="app-layout">
-
-    <!-- SIDEBAR -->
+    <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
       <button class="close-sidebar" id="close-sidebar"><i class="fa-solid fa-xmark"></i></button>
       <div class="sidebar-header">
@@ -33,40 +30,30 @@
         </div>
       </div>
       <nav class="sidebar-nav">
-        <button class="nav-btn active" data-page="agendamentos">
-          <i class="fa-regular fa-calendar"></i> Agendamentos
-        </button>
-        <button class="nav-btn" data-page="clientes">
-          <i class="fa-regular fa-user"></i> Clientes
-        </button>
-        <button class="nav-btn" data-page="profissionais">
-          <i class="fa-solid fa-scissors"></i> Profissionais
-        </button>
+        <button class="nav-btn active" data-page="agendamentos"><i class="fa-regular fa-calendar"></i> Agendamentos</button>
+        <button class="nav-btn" data-page="clientes"><i class="fa-regular fa-address-book"></i> Clientes</button>
+        <button class="nav-btn" data-page="profissionais"><i class="fa-solid fa-scissors"></i> Profissionais</button>
       </nav>
       <div class="sidebar-footer">
-        <button class="btn-sair" id="btn-sair">
-          <i class="fa-solid fa-right-from-bracket"></i> Sair
-        </button>
+        <button class="btn-sair" id="btn-sair"><i class="fa-solid fa-right-from-bracket"></i> Sair</button>
       </div>
     </aside>
 
-    <!-- MAIN CONTENT -->
-    <div class="main-content">
+    <!-- Main -->
+    <main class="main-content">
 
-      <!-- ===== PAGE: AGENDAMENTOS ===== -->
+      <!-- AGENDAMENTOS -->
       <div class="page active" id="page-agendamentos">
         <div class="page-header">
           <h2>Agendamentos</h2>
-          <button class="btn-novo" id="btn-novo-agendamento">
-            <i class="fa-solid fa-plus"></i> Novo
-          </button>
+          <button class="btn-novo" id="btn-novo-agendamento"><i class="fa-solid fa-plus"></i> Novo</button>
         </div>
         <div class="agenda-grid">
           <div class="calendar-card">
             <div class="calendar-nav">
-              <button id="prev-month"><i class="fa-solid fa-chevron-left"></i></button>
+              <button id="prev-month">&lt;</button>
               <span class="month-year" id="month-year"></span>
-              <button id="next-month"><i class="fa-solid fa-chevron-right"></i></button>
+              <button id="next-month">&gt;</button>
             </div>
             <div class="calendar-weekdays">
               <span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span>
@@ -74,34 +61,30 @@
             <div class="calendar-days" id="calendar-days"></div>
           </div>
           <div class="day-detail-card">
-            <div class="day-detail-header" id="day-detail-header"></div>
-            <div id="day-appointments"></div>
+            <div class="day-detail-header" id="day-detail-header">Selecione uma data</div>
+            <div id="day-appointments">
+              <div class="no-appointments"><i class="fa-regular fa-clock"></i><p>Selecione uma data para ver os agendamentos</p></div>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- ===== PAGE: CLIENTES ===== -->
+      <!-- CLIENTES -->
       <div class="page" id="page-clientes">
         <div class="page-header">
           <h2>Clientes</h2>
-          <button class="btn-novo" id="btn-novo-cliente">
-            <i class="fa-solid fa-plus"></i> Novo Cliente
-          </button>
+          <button class="btn-novo" id="btn-novo-cliente"><i class="fa-solid fa-plus"></i> Novo Cliente</button>
         </div>
         <div class="birthday-banner" id="birthday-banner" style="display:none;"></div>
         <div class="clients-table-wrapper">
           <table class="clients-table">
-            <thead>
-              <tr>
-                <th>Nome</th><th>Telefone</th><th>Nascimento</th>
-              </tr>
-            </thead>
+            <thead><tr><th>Nome</th><th>Telefone</th><th>Nascimento</th></tr></thead>
             <tbody id="clients-tbody"></tbody>
           </table>
         </div>
       </div>
 
-      <!-- ===== PAGE: PROFISSIONAIS ===== -->
+      <!-- PROFISSIONAIS -->
       <div class="page" id="page-profissionais">
         <div class="page-header">
           <h2>Profissionais & Serviços</h2>
@@ -109,36 +92,36 @@
         <div class="professionals-grid" id="professionals-grid"></div>
       </div>
 
-    </div>
+    </main>
   </div>
 
-  <!-- ===== MODAL: IDENTIFICAÇÃO DO CLIENTE ===== -->
+  <!-- MODAL: Identificação do Cliente -->
   <div class="modal-overlay" id="modal-identificacao">
-    <div class="modal">
+    <div class="modal modal-small">
       <div class="modal-header">
         <h3>Identificação do Cliente</h3>
-        <button class="modal-close" id="close-identificacao">&times;</button>
+        <button class="modal-close" onclick="closeModal('modal-identificacao')">&times;</button>
       </div>
       <div class="form-group">
         <label>Telefone</label>
-        <input type="tel" id="id-telefone" placeholder="(00) 00000-0000">
+        <input type="tel" id="id-telefone" placeholder="(99) 99999-9999">
       </div>
-      <p class="id-feedback" id="id-feedback"></p>
+      <div id="id-feedback" style="display:none; margin-bottom:12px; font-size:0.9rem;"></div>
       <div class="modal-actions">
-        <button class="btn-cancel" id="cancel-identificacao">Cancelar</button>
-        <button class="btn-submit" id="btn-consultar">Consultar</button>
+        <button class="btn-cancel" onclick="closeModal('modal-identificacao')">Cancelar</button>
+        <button class="btn-submit" onclick="consultarCliente()">Consultar</button>
       </div>
     </div>
   </div>
 
-  <!-- ===== MODAL: AGENDAMENTO ===== -->
+  <!-- MODAL: Agendamento -->
   <div class="modal-overlay" id="modal-agendamento">
     <div class="modal">
       <div class="modal-header">
         <h3 id="modal-agendamento-titulo">Novo Agendamento</h3>
-        <button class="modal-close" id="close-agendamento">&times;</button>
+        <button class="modal-close" onclick="closeModal('modal-agendamento')">&times;</button>
       </div>
-      <form id="form-agendamento">
+      <form id="form-agendamento" onsubmit="saveAppointment(event)">
         <input type="hidden" id="ag-id" value="">
         <div class="form-group">
           <label>Cliente</label>
@@ -151,24 +134,27 @@
         <div class="form-row">
           <div class="form-group">
             <label>Profissional</label>
-            <select id="ag-profissional"><option value="">Selecione...</option></select>
+            <select id="ag-profissional" onchange="onProfissionalChange()" required>
+              <option value="">Selecione...</option>
+            </select>
           </div>
           <div class="form-group">
             <label>Serviço</label>
-            <select id="ag-servico"><option value="">Selecione...</option></select>
+            <select id="ag-servico" onchange="onServicoChange()" required>
+              <option value="">Selecione...</option>
+            </select>
           </div>
         </div>
-        <!-- Campo de cor (aparece só para Coloração) -->
+
+        <!-- Grupo de cores (só aparece p/ Coloração) -->
         <div class="form-group" id="grupo-cor" style="display:none;">
           <label>Cor</label>
-          <div class="color-dropdown" id="color-dropdown">
-            <div class="color-dropdown-trigger" id="color-dropdown-trigger">
-              <span id="color-dropdown-text">Selecione uma cor...</span>
-            </div>
-            <div class="color-dropdown-options" id="color-dropdown-options"></div>
-          </div>
-          <input type="hidden" id="ag-cor" value="">
+          <div id="cores-container"></div>
+          <button type="button" class="btn-add-cor" id="btn-add-cor" onclick="adicionarCampoCorExtra()">
+            <i class="fa-solid fa-circle-plus"></i> Adicionar outra cor
+          </button>
         </div>
+
         <div class="form-row">
           <div class="form-group">
             <label>Data</label>
@@ -180,50 +166,66 @@
           </div>
         </div>
         <div class="modal-actions">
-          <button type="button" class="btn-cancel" id="cancel-agendamento">Cancelar</button>
-          <button type="submit" class="btn-submit" id="btn-salvar-agendamento">Agendar</button>
+          <button type="button" class="btn-delete" id="btn-excluir-agendamento" onclick="confirmarExclusao()" style="display:none;">
+            <i class="fa-solid fa-trash"></i> Excluir Agendamento
+          </button>
+          <button type="submit" class="btn-submit">Salvar</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- ===== MODAL: CLIENTE ===== -->
+  <!-- MODAL: Confirmação de exclusão -->
+  <div class="modal-overlay" id="modal-confirmar-exclusao">
+    <div class="modal modal-small">
+      <div class="modal-header">
+        <h3>Confirmar Exclusão</h3>
+        <button class="modal-close" onclick="closeModal('modal-confirmar-exclusao')">&times;</button>
+      </div>
+      <p style="color:var(--text-muted); margin-bottom:20px;">Tem certeza que deseja excluir este agendamento?</p>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal('modal-confirmar-exclusao')">Não</button>
+        <button class="btn-delete" onclick="excluirAgendamento()">Sim, Excluir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Cliente -->
   <div class="modal-overlay" id="modal-cliente">
     <div class="modal">
       <div class="modal-header">
         <h3>Novo Cliente</h3>
-        <button class="modal-close" id="close-cliente">&times;</button>
+        <button class="modal-close" onclick="closeModal('modal-cliente')">&times;</button>
       </div>
-      <form id="form-cliente">
+      <form id="form-cliente" onsubmit="saveClient(event)">
         <div class="form-group">
           <label>Nome</label>
           <input type="text" id="cl-nome" required>
         </div>
         <div class="form-group">
           <label>Telefone</label>
-          <input type="tel" id="cl-telefone" placeholder="(00) 00000-0000">
+          <input type="tel" id="cl-telefone" required>
         </div>
         <div class="form-group">
           <label>Data de Nascimento</label>
           <input type="date" id="cl-nascimento">
         </div>
         <div class="modal-actions">
-          <button type="button" class="btn-cancel" id="cancel-cliente">Cancelar</button>
+          <button type="button" class="btn-cancel" onclick="closeModal('modal-cliente')">Cancelar</button>
           <button type="submit" class="btn-submit">Cadastrar</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- ===== MODAL: HISTÓRICO DO CLIENTE ===== -->
+  <!-- MODAL: Histórico do Cliente -->
   <div class="modal-overlay" id="modal-historico">
-    <div class="modal modal-historico">
+    <div class="modal">
       <div class="modal-header">
         <h3>Histórico do Cliente</h3>
-        <button class="modal-close" id="close-historico">&times;</button>
+        <button class="modal-close" onclick="closeModal('modal-historico')">&times;</button>
       </div>
-      <div class="historico-info" id="historico-info"></div>
-      <div class="historico-lista" id="historico-lista"></div>
+      <div id="historico-conteudo"></div>
     </div>
   </div>
 
