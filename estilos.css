@@ -893,3 +893,57 @@ body {
 /* ===== HIDDEN PAGES ===== */
 .page { display: none; }
 .page.active { display: block; animation: fadeIn 0.3s ease; }
+
+/* ===== Scrollbar estilizada para modais ===== */
+.modal::-webkit-scrollbar {
+  width: 6px;
+}
+.modal::-webkit-scrollbar-track {
+  background: var(--bg-card);
+  border-radius: 3px;
+}
+.modal::-webkit-scrollbar-thumb {
+  background: var(--gold-border);
+  border-radius: 3px;
+}
+.modal::-webkit-scrollbar-thumb:hover {
+  background: var(--gold);
+}
+.modal {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(200,164,90,0.25) var(--bg-card);
+}
+
+.modal-overlay::-webkit-scrollbar {
+  width: 6px;
+}
+.modal-overlay::-webkit-scrollbar-track {
+  background: transparent;
+}
+.modal-overlay::-webkit-scrollbar-thumb {
+  background: var(--gold-border);
+  border-radius: 3px;
+}
+.modal-overlay {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(200,164,90,0.25) transparent;
+}
+
+.historico-lista::-webkit-scrollbar {
+  width: 5px;
+}
+.historico-lista::-webkit-scrollbar-track {
+  background: var(--bg-card);
+  border-radius: 3px;
+}
+.historico-lista::-webkit-scrollbar-thumb {
+  background: var(--gold-border);
+  border-radius: 3px;
+}
+.historico-lista::-webkit-scrollbar-thumb:hover {
+  background: var(--gold);
+}
+.historico-lista {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(200,164,90,0.25) var(--bg-card);
+}
