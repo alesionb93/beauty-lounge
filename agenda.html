@@ -8,164 +8,161 @@
   <link rel="stylesheet" href="estilos.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
-  <!-- Hamburger -->
-  <button class="hamburger" id="hamburger"><i class="fa-solid fa-bars"></i></button>
 
-  <!-- Sidebar overlay -->
-  <div class="sidebar-overlay" id="sidebar-overlay"></div>
-
-  <div class="app-layout">
-    <!-- Sidebar -->
-    <aside class="sidebar" id="sidebar">
-      <button class="close-sidebar" id="close-sidebar"><i class="fa-solid fa-xmark"></i></button>
-      <div class="sidebar-header">
-        <img src="logo.png" alt="BEAUTY LOUNGE Jurerê">
-        <div class="brand">
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="logo-section">
+        <div class="logo-icon">
+          <img src="logo.png" alt="RHAI Beauty Salon" style="width: 48px; height: 48px; border-radius: 12px;">
+        </div>
+        <div>
           <h2>BEAUTY LOUNGE</h2>
           <p>Jurerê</p>
         </div>
       </div>
-      <nav class="sidebar-nav">
-        <button class="nav-btn active" data-page="agendamentos"><i class="fa-regular fa-calendar"></i>Agendamentos</button>
-        <button class="nav-btn" data-page="clientes"><i class="fa-regular fa-user"></i>Clientes</button>
-        <button class="nav-btn" data-page="profissionais"><i class="fa-solid fa-scissors"></i>Profissionais</button>
+
+      <nav>
+        <a href="#" class="nav-link active" data-section="agendamentos">Agendamentos</a>
+        <a href="#" class="nav-link" data-section="clientes">Clientes</a>
+        <a href="#" class="nav-link" data-section="profissionais">Profissionais</a>
       </nav>
-      <div class="sidebar-footer">
-        <button class="btn-sair" id="btn-sair"><i class="fa-solid fa-right-from-bracket"></i> Sair</button>
-      </div>
+
+      <a href="index.html" class="nav-link logout"> Sair</a>
     </aside>
 
-    <!-- Main -->
     <main class="main-content">
 
-      <!-- AGENDAMENTOS -->
-      <div class="page active" id="page-agendamentos">
-        <div class="page-header">
-          <h2>Agendamentos</h2>
-          <button class="btn-novo" id="btn-novo-agendamento"><i class="fa-solid fa-plus"></i> Novo</button>
+      <section id="section-agendamentos" class="section active">
+        <div class="section-header">
+          <h1>Agendamentos</h1>
+          <button class="btn-primary" id="btnNovoAgendamento"> Novo</button>
         </div>
-        <div class="agenda-grid">
-          <div class="calendar-card">
+
+        <div class="agenda-layout">
+          <div class="calendar-panel">
             <div class="calendar-nav">
-              <button id="prev-month"><i class="fa-solid fa-chevron-left"></i></button>
-              <span class="month-year" id="month-year"></span>
-              <button id="next-month"><i class="fa-solid fa-chevron-right"></i></button>
+              <button id="prevMonth">&lt;</button>
+              <span id="mesAno"></span>
+              <button id="nextMonth">&gt;</button>
             </div>
             <div class="calendar-weekdays">
               <span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span>
             </div>
-            <div class="calendar-days" id="calendar-days"></div>
+            <div class="calendar-days" id="calendarDays"></div>
           </div>
-          <div class="day-detail-card">
-            <p class="day-detail-header" id="day-detail-header"></p>
-            <div id="day-appointments"></div>
-          </div>
-        </div>
-      </div>
 
-      <!-- CLIENTES -->
-      <div class="page" id="page-clientes">
-        <div class="page-header">
-          <h2>Clientes</h2>
-          <button class="btn-novo" id="btn-novo-cliente"><i class="fa-solid fa-plus"></i> Novo Cliente</button>
+          <div class="agenda-list" id="listaAgendamentos">
+            <div class="empty-state">
+              <p>Selecione uma data para ver os agendamentos</p>
+            </div>
+          </div>
         </div>
-        <div class="birthday-banner" id="birthday-banner" style="display:none"></div>
-        <div class="clients-table-wrapper">
-          <table class="clients-table">
+      </section>
+
+      <section id="section-clientes" class="section">
+        <div class="section-header">
+          <h1>Clientes</h1>
+          <button class="btn-primary" id="btnNovoCliente"> Novo Cliente</button>
+        </div>
+
+        <div id="clientesGrid" class="clients-grid"></div>
+
+        <div class="table-container">
+          <table>
             <thead>
-              <tr><th>Nome</th><th>Telefone</th><th>Nascimento</th></tr>
+              <tr>
+                <th>Nome</th><th>Telefone</th><th>Nascimento</th>
+              </tr>
             </thead>
-            <tbody id="clients-tbody"></tbody>
+            <tbody id="tabelaClientes">
+            </tbody>
           </table>
         </div>
-      </div>
+      </section>
 
-      <!-- PROFISSIONAIS -->
-      <div class="page" id="page-profissionais">
-        <div class="page-header">
-          <h2>Profissionais & Serviços</h2>
+      <section id="section-profissionais" class="section">
+        <div class="section-header">
+          <h1>Profissionais & Serviços</h1>
         </div>
-        <div class="professionals-grid" id="professionals-grid"></div>
-      </div>
+        <div id="profissionaisGrid" class="professionals-grid"></div>
+      </section>
 
     </main>
   </div>
 
-  <!-- Modal Agendamento -->
-  <div class="modal-overlay" id="modal-agendamento">
+  <div class="modal-overlay" id="modalAgendamento">
     <div class="modal">
       <div class="modal-header">
-        <h3>Novo Agendamento</h3>
-        <button class="modal-close" id="close-agendamento"><i class="fa-solid fa-xmark"></i></button>
+        <h2>Novo Agendamento</h2>
+        <button class="modal-close" id="fecharModalAgendamento">&times;</button>
       </div>
-      <form id="form-agendamento">
+      <form id="formAgendamento">
         <div class="form-group">
           <label>Cliente</label>
-          <input type="text" id="ag-cliente" placeholder="Nome do cliente" required>
+          <input type="text" id="agCliente" required>
         </div>
         <div class="form-group">
           <label>Telefone</label>
-          <input type="text" id="ag-telefone" placeholder="(00) 00000-0000" required>
+          <input type="tel" id="agTelefone" required>
         </div>
         <div class="form-row">
           <div class="form-group">
             <label>Profissional</label>
-            <select id="ag-profissional" required><option value="">Selecione...</option></select>
+            <select id="agProfissional"><option value="">Selecione...</option></select>
           </div>
           <div class="form-group">
             <label>Serviço</label>
-            <select id="ag-servico" required><option value="">Selecione...</option></select>
+            <select id="agServico"><option value="">Selecione...</option></select>
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
             <label>Data</label>
-            <input type="date" id="ag-data" required>
+            <input type="date" id="agData" required>
           </div>
           <div class="form-group">
             <label>Hora</label>
-            <input type="time" id="ag-hora" required>
+            <input type="time" id="agHora" required>
           </div>
         </div>
-        <div class="modal-actions">
-          <button type="button" class="btn-cancel" id="cancel-agendamento">Cancelar</button>
-          <button type="submit" class="btn-submit">Agendar</button>
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" id="cancelarAgendamento">Cancelar</button>
+          <button type="submit" class="btn-primary">Agendar</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Modal Cliente -->
-  <div class="modal-overlay" id="modal-cliente">
+  <div class="modal-overlay" id="modalCliente">
     <div class="modal">
       <div class="modal-header">
-        <h3>Novo Cliente</h3>
-        <button class="modal-close" id="close-cliente"><i class="fa-solid fa-xmark"></i></button>
+        <h2>Novo Cliente</h2>
+        <button class="modal-close" id="fecharModalCliente">&times;</button>
       </div>
-      <form id="form-cliente">
+      <form id="formCliente">
         <div class="form-group">
           <label>Nome</label>
-          <input type="text" id="cl-nome" placeholder="Nome completo" required>
+          <input type="text" id="clNome" required>
         </div>
         <div class="form-group">
           <label>Telefone</label>
-          <input type="text" id="cl-telefone" placeholder="(00) 00000-0000" required>
+          <input type="tel" id="clTelefone" required>
         </div>
         <div class="form-group">
           <label>Data de Nascimento</label>
-          <input type="date" id="cl-nascimento">
+          <input type="date" id="clNascimento">
         </div>
-        <div class="modal-actions">
-          <button type="button" class="btn-cancel" id="cancel-cliente">Cancelar</button>
-          <button type="submit" class="btn-submit">Cadastrar</button>
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" id="cancelarCliente">Cancelar</button>
+          <button type="submit" class="btn-primary">Cadastrar</button>
         </div>
       </form>
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script type="module" src="script.js"></script>
 </body>
 </html>
