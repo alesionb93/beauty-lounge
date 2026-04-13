@@ -27,6 +27,12 @@
   </div>
 
   <script>
+    var users = {
+      'rhai':  { senha: 'Rhai123@@',  nome: 'Rhai',  role: 'admin' },
+      'rubia': { senha: 'Rubia123@@', nome: 'Rubia', role: 'admin' },
+      'pablo': { senha: 'Pablo.123',  nome: 'Pablo', role: 'colaborador' }
+    };
+
     document.getElementById('btn-login').addEventListener('click', login);
     document.getElementById('login-pass').addEventListener('keydown', function(e) {
       if (e.key === 'Enter') login();
@@ -36,10 +42,13 @@
     });
 
     function login() {
-      var user = document.getElementById('login-user').value.trim();
+      var user = document.getElementById('login-user').value.trim().toLowerCase();
       var pass = document.getElementById('login-pass').value;
-      if (user === 'rhai' && pass === 'Rhai123@@') {
+      var u = users[user];
+      if (u && u.senha === pass) {
         sessionStorage.setItem('logged', 'true');
+        sessionStorage.setItem('userName', u.nome);
+        sessionStorage.setItem('userRole', u.role);
         window.location.href = 'agenda.html';
       } else {
         var err = document.getElementById('login-error');
