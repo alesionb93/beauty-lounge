@@ -29,10 +29,26 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabaseClient.js"></script>
   <script>
-    // Verificar se já está logado
+    // Helper: buscar dados do usuário na tabela 'usuarios' e setar sessionStorage
+    async function setSessionFromUser(userId) {
+      var resp = await supabaseClient.from('usuarios').select('nome, role').eq('id', userId).single();
+      if (resp.data) {
+        sessionStorage.setItem('logged', 'true');
+        sessionStorage.setItem('userName', resp.data.nome);
+        sessionStorage.setItem('userRole', resp.data.role || 'colaborador');
+      } else {
+        // Fallback caso não encontre na tabela usuarios
+        sessionStorage.setItem('logged', 'true');
+        sessionStorage.setItem('userName', '');
+        sessionStorage.setItem('userRole', 'colaborador');
+      }
+    }
+
+    // Verificar se já está logado (auto-login)
     (async function() {
       var { data: { session } } = await supabaseClient.auth.getSession();
       if (session) {
+        await setSessionFromUser(session.user.id);
         window.location.href = 'agenda.html';
       }
     })();
@@ -72,7 +88,8 @@
         return;
       }
 
-      // Login OK — redirecionar
+      // Login OK — setar sessionStorage e redirecionar
+      await setSessionFromUser(data.session.user.id);
       window.location.href = 'agenda.html';
     }
   </script>
