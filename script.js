@@ -1,49 +1,16 @@
-/* ===== DATA ===== */
-var professionals = {
-  'Rhai': ['Nanopigmentação','Design de sobrancelhas','Henna','Coloração de sobrancelhas','Epilação Buço','Epilação Queixo','Epilação Rosto','Lash lifting','Brow lamination','Mega Hair','Escova','Babyliss'],
-  'Rubia': ['Tratamento capilar','Botox capilar / Progressiva','Coloração'],
-  'Pablo': ['Corte','Mechas','Penteado','Escova','Babyliss']
-};
+/* ===== DATA (agora dinâmico — carregado do Supabase) ===== */
+var professionals = {};   // { 'Rhai': [ {id, nome, preco, duracao}, ... ], ... }
+var servicePrices = {};    // { 'Nanopigmentação': {preco:650, duracao:90}, ... }
+var allServicos = [];      // [ {id, nome, preco, duracao}, ... ]
 
-var servicePrices = {
-  'Nanopigmentação': { preco: 650, duracao: 90 },
-  'Design de sobrancelhas': { preco: 80, duracao: 45 },
-  'Henna': { preco: 60, duracao: 30 },
-  'Coloração de sobrancelhas': { preco: 50, duracao: 30 },
-  'Epilação Buço': { preco: 30, duracao: 15 },
-  'Epilação Queixo': { preco: 30, duracao: 15 },
-  'Epilação Rosto': { preco: 50, duracao: 20 },
-  'Lash lifting': { preco: 180, duracao: 60 },
-  'Brow lamination': { preco: 150, duracao: 60 },
-  'Mega Hair': { preco: 800, duracao: 180 },
-  'Escova': { preco: 80, duracao: 45 },
-  'Babyliss': { preco: 100, duracao: 60 },
-  'Tratamento capilar': { preco: 200, duracao: 60 },
-  'Botox capilar / Progressiva': { preco: 350, duracao: 120 },
-  'Coloração': { preco: 250, duracao: 90 },
-  'Corte': { preco: 60, duracao: 30 },
-  'Mechas': { preco: 300, duracao: 120 },
-  'Penteado': { preco: 150, duracao: 60 }
-};
+/* ===== CORES DINÂMICAS (carregadas do Supabase) ===== */
+var coresPorServico = {};  // { servicoId: { base: [{id,nome,hex}], pigmento: [{id,nome,hex}] } }
 
-var colorOptions = [
-  { code: 'Nenhuma', hex: '#888888' },
-  { code: '1-0', hex: '#030104' },
-  { code: '7-0', hex: '#60462B' },
-  { code: '8-0', hex: '#85602C' },
-  { code: '9-0', hex: '#C89651' }
-];
+var colorOptions = [];     // Compatibilidade — será preenchido dinamicamente
+var pigmentOptions = [];   // Compatibilidade — será preenchido dinamicamente
 
-var pigmentOptions = [
-  { code: '0-11', hex: '#A49CBD' },
-  { code: '0-22', hex: '#25386A' },
-  { code: '0-33', hex: '#02181F' },
-  { code: '0-55', hex: '#F49442' },
-  { code: '0-77', hex: '#E25F40' },
-  { code: '0-88', hex: '#F04641' },
-  { code: '0-89', hex: '#5D0B33' },
-  { code: '0-99', hex: '#141728' }
-];
+var colorOptions = [];
+var pigmentOptions = [];
 
 var professionalAvatars = {
   'Rhai': 'rhai.jpg',
@@ -55,19 +22,10 @@ var clients = [];
 var appointments = [];
 var editingAppointmentId = null;
 var pendingClienteFromIdentificacao = null;
+var currentUser = { nome: '', role: '' };
+var activeFilters = [];
 var pendingBaseCallback = null;
 var pendingPigmentoCallback = null;
-
-// ===== NOVO: currentUser com dados do Supabase =====
-var currentUser = {
-  id: '',
-  nome: '',
-  email: '',
-  role: '',       // 'master_admin', 'admin', 'colaborador'
-  profissional: '' // nome do profissional vinculado
-};
-
-var activeFilters = [];
 
 var MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
@@ -81,61 +39,6 @@ var profColors = {
   'Rubia': '#9b59b6',
   'Pablo': '#e91e90'
 };
-
-/* ===== AUTH HELPERS ===== */
-
-// Verificar se o usuário tem permissão de admin ou master
-function hasPermission(minRole) {
-  var roleHierarchy = { 'master_admin': 0, 'admin': 1, 'colaborador': 2 };
-  var userLevel = roleHierarchy[currentUser.role];
-  var requiredLevel = roleHierarchy[minRole];
-  if (userLevel === undefined || requiredLevel === undefined) return false;
-  return userLevel <= requiredLevel;
-}
-
-function isAdmin() {
-  return hasPermission('admin');
-}
-
-function isMasterAdmin() {
-  return hasPermission('master_admin');
-}
-
-// Buscar dados do usuário na tabela usuarios
-async function fetchCurrentUser() {
-  var { data: { session } } = await supabaseClient.auth.getSession();
-  if (!session) {
-    window.location.href = 'index.html';
-    return false;
-  }
-
-  var { data: userData, error } = await supabaseClient
-    .from('usuarios')
-    .select('*')
-    .eq('id', session.user.id)
-    .single();
-
-  if (error || !userData) {
-    console.error('Erro ao buscar dados do usuário:', error);
-    await supabaseClient.auth.signOut();
-    window.location.href = 'index.html';
-    return false;
-  }
-
-  currentUser.id = userData.id;
-  currentUser.nome = userData.nome;
-  currentUser.email = userData.email;
-  currentUser.role = userData.role;
-  currentUser.profissional = userData.profissional || '';
-
-  return true;
-}
-
-// Logout
-async function logoutUser() {
-  await supabaseClient.auth.signOut();
-  window.location.href = 'index.html';
-}
 
 /* ===== SUPABASE HELPERS ===== */
 async function loadClients() {
@@ -162,6 +65,105 @@ async function loadAppointments() {
       servicos: a.servicos ? (typeof a.servicos === 'string' ? JSON.parse(a.servicos) : a.servicos) : null
     };
   });
+}
+
+/* ===== NOVO: Carregar serviços do Supabase ===== */
+async function loadServicos() {
+  var resp = await supabaseClient.from('servicos').select('*').order('nome');
+  if (resp.error) { console.error('Erro servicos:', resp.error); return; }
+  allServicos = resp.data || [];
+  // Rebuild servicePrices lookup
+  servicePrices = {};
+  allServicos.forEach(function(s) {
+    servicePrices[s.nome] = { preco: parseFloat(s.preco), duracao: s.duracao };
+  });
+}
+
+async function loadProfissionalServicos() {
+  var resp = await supabaseClient.from('profissional_servicos').select('profissional_nome, servico_id, servicos(id, nome, preco, duracao)');
+  if (resp.error) { console.error('Erro prof_servicos:', resp.error); return; }
+  professionals = {};
+  (resp.data || []).forEach(function(ps) {
+    var prof = ps.profissional_nome;
+    if (!professionals[prof]) professionals[prof] = [];
+    if (ps.servicos) {
+      var exists = professionals[prof].some(function(s) { return s.id === ps.servicos.id; });
+      if (!exists) {
+        professionals[prof].push({
+          id: ps.servicos.id,
+          nome: ps.servicos.nome,
+          preco: parseFloat(ps.servicos.preco),
+          duracao: ps.servicos.duracao
+        });
+      }
+    }
+  });
+}
+
+/* ===== NOVO: Carregar cores do Supabase ===== */
+async function loadCores() {
+  var resp = await supabaseClient.from('cores').select('*').order('nome');
+  if (resp.error) { console.error('Erro cores:', resp.error); return; }
+  coresPorServico = {};
+  colorOptions = [];
+  pigmentOptions = [];
+
+  (resp.data || []).forEach(function(c) {
+    var sid = c.servico_id;
+    if (!coresPorServico[sid]) coresPorServico[sid] = { base: [], pigmento: [] };
+    var item = { id: c.id, nome: c.nome, hex: c.hex };
+    if (c.tipo === 'base') {
+      coresPorServico[sid].base.push(item);
+      // Compatibilidade
+      if (!colorOptions.some(function(x) { return x.code === c.nome; })) {
+        colorOptions.push({ code: c.nome, hex: c.hex });
+      }
+    } else {
+      coresPorServico[sid].pigmento.push(item);
+      if (!pigmentOptions.some(function(x) { return x.code === c.nome; })) {
+        pigmentOptions.push({ code: c.nome, hex: c.hex });
+      }
+    }
+  });
+}
+
+/* Buscar cores de um serviço específico */
+function getCoresDoServico(servicoNome) {
+  var svc = allServicos.find(function(s) { return s.nome === servicoNome; });
+  if (!svc) return { base: [], pigmento: [] };
+  return coresPorServico[svc.id] || { base: [], pigmento: [] };
+}
+
+/* CRUD de Cores */
+async function criarCor(nome, hex, tipo, servicoId) {
+  var resp = await supabaseClient.from('cores').insert([{ nome: nome, hex: hex, tipo: tipo, servico_id: servicoId }]).select();
+  if (resp.error) { console.error('Erro criar cor:', resp.error); return null; }
+  return resp.data[0];
+}
+
+async function editarCor(id, nome, hex) {
+  var resp = await supabaseClient.from('cores').update({ nome: nome, hex: hex }).eq('id', id);
+  if (resp.error) { console.error('Erro editar cor:', resp.error); return false; }
+  return true;
+}
+
+async function excluirCor(id) {
+  var resp = await supabaseClient.from('cores').delete().eq('id', id);
+  if (resp.error) { console.error('Erro excluir cor:', resp.error); return false; }
+  return true;
+}
+
+/* Helpers de permissão */
+function isAdmin() {
+  return currentUser.role === 'admin' || currentUser.role === 'master_admin';
+}
+function isMasterAdmin() {
+  return currentUser.role === 'master_admin';
+}
+
+/* Helper: lista de nomes de serviço por profissional (compatibilidade) */
+function getProfServiceNames(prof) {
+  return (professionals[prof] || []).map(function(s) { return s.nome; });
 }
 
 async function insertAppointment(apt) {
@@ -222,27 +224,65 @@ async function insertClient(clientObj) {
   return resp.data[0];
 }
 
+/* ===== CRUD DE SERVIÇOS ===== */
+async function criarServico(nome, preco, duracao, usa_cores) {
+  var resp = await supabaseClient.from('servicos').insert([{ nome: nome, preco: preco, duracao: duracao, usa_cores: usa_cores || false }]).select();
+  if (resp.error) { console.error('Erro criar serviço:', resp.error); return null; }
+  return resp.data[0];
+}
+
+async function editarServico(id, nome, preco, duracao, usa_cores) {
+  var resp = await supabaseClient.from('servicos').update({ nome: nome, preco: preco, duracao: duracao, usa_cores: usa_cores || false }).eq('id', id);
+  if (resp.error) { console.error('Erro editar serviço:', resp.error); return false; }
+  return true;
+}
+
+async function excluirServico(id) {
+  var resp = await supabaseClient.from('servicos').delete().eq('id', id);
+  if (resp.error) { console.error('Erro excluir serviço:', resp.error); return false; }
+  return true;
+}
+
+async function vincularServicoProfissional(profNome, servicoId) {
+  var resp = await supabaseClient.from('profissional_servicos').insert([{ profissional_nome: profNome, servico_id: servicoId }]);
+  if (resp.error && resp.error.code !== '23505') { console.error('Erro vincular:', resp.error); return false; }
+  return true;
+}
+
+async function desvincularServicoProfissional(profNome, servicoId) {
+  var resp = await supabaseClient.from('profissional_servicos').delete().eq('profissional_nome', profNome).eq('servico_id', servicoId);
+  if (resp.error) { console.error('Erro desvincular:', resp.error); return false; }
+  return true;
+}
+
 /* ===== INIT ===== */
 document.addEventListener('DOMContentLoaded', async function() {
-  // ===== NOVO: Verificar sessão via Supabase Auth =====
-  var loggedIn = await fetchCurrentUser();
-  if (!loggedIn) return;
-
-  // Sidebar user info with avatar
-  var userAvatarHtml = getAvatarHtml(currentUser.profissional || currentUser.nome, 'avatar--sidebar');
-  document.getElementById('user-info').innerHTML = userAvatarHtml + '<div class="user-details"><span class="user-name">' + currentUser.nome + '</span><span class="user-role">' + currentUser.role + '</span></div>';
-
-  // ===== NOVO: Controle de acesso por role (via JS, não apenas CSS) =====
-  applyRoleAccess();
-
-  // Definir filtros iniciais baseado no role
-  if (isAdmin()) {
-    activeFilters = Object.keys(professionals);
-  } else {
-    // Colaborador: filtrar apenas seus agendamentos
-    activeFilters = [currentUser.profissional];
+  if (!sessionStorage.getItem('logged')) {
+    window.location.href = 'index.html';
+    return;
   }
 
+  currentUser.nome = sessionStorage.getItem('userName') || '';
+  currentUser.role = sessionStorage.getItem('userRole') || 'colaborador';
+
+  var userAvatarHtml = getAvatarHtml(currentUser.nome, 'avatar--sidebar');
+  document.getElementById('user-info').innerHTML = userAvatarHtml + '<div class="user-details"><span class="user-name">' + currentUser.nome + '</span><span class="user-role">' + currentUser.role + '</span></div>';
+
+  if (!isAdmin()) {
+    document.querySelectorAll('.admin-only, .nav-admin-only').forEach(function(el) {
+      el.style.display = 'none';
+    });
+  } else {
+    var btnGerenciar = document.getElementById('btn-gerenciar-servicos');
+    if (btnGerenciar) btnGerenciar.style.display = '';
+  }
+
+  activeFilters = [currentUser.nome];
+
+  // Carregar dados (serviços primeiro, depois cores, depois o resto)
+  await loadServicos();
+  await loadProfissionalServicos();
+  await loadCores();
   await loadClients();
   await loadAppointments();
 
@@ -250,21 +290,21 @@ document.addEventListener('DOMContentLoaded', async function() {
   document.querySelectorAll('.nav-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var page = this.dataset.page;
-      // Controle de acesso por role
       if (page === 'dashboard' && !isAdmin()) return;
       switchPage(page);
     });
   });
 
-  // Hamburger
   document.getElementById('hamburger').addEventListener('click', openSidebar);
   document.getElementById('sidebar-overlay').addEventListener('click', closeSidebar);
   document.getElementById('close-sidebar').addEventListener('click', closeSidebar);
 
-  // ===== NOVO: Logout via Supabase Auth =====
-  document.getElementById('btn-sair').addEventListener('click', logoutUser);
+  document.getElementById('btn-sair').addEventListener('click', async function() {
+    await supabaseClient.auth.signOut();
+    sessionStorage.clear();
+    window.location.href = 'index.html';
+  });
 
-  // Calendar nav
   document.getElementById('prev-month').addEventListener('click', function() {
     if (currentMonth === 0) { currentMonth = 11; currentYear--; } else { currentMonth--; }
     selectedDay = 1; renderCalendar(); renderDayDetail();
@@ -274,34 +314,28 @@ document.addEventListener('DOMContentLoaded', async function() {
     selectedDay = 1; renderCalendar(); renderDayDetail();
   });
 
-  // Novo agendamento
   document.getElementById('btn-novo-agendamento').addEventListener('click', function() {
     document.getElementById('id-telefone').value = '';
     document.getElementById('id-feedback').style.display = 'none';
     openModal('modal-identificacao');
   });
 
-  // Novo cliente
   document.getElementById('btn-novo-cliente').addEventListener('click', function() {
     pendingClienteFromIdentificacao = null;
     document.getElementById('form-cliente').reset();
     openModal('modal-cliente');
   });
 
-  // Filter button (admin only)
   var filterBtn = document.getElementById('btn-filtrar-agendas');
   if (filterBtn) {
     filterBtn.addEventListener('click', toggleFilterBar);
   }
 
-  // Set default date
   document.getElementById('ag-data').value = formatDateInput(today);
 
-  // Mask telefone
   maskTelefone(document.getElementById('id-telefone'));
   maskTelefone(document.getElementById('cl-telefone'));
 
-  // Populate base qty select
   var baseQtdSelect = document.getElementById('base-qtd-select');
   for (var g = 5; g <= 120; g += 5) {
     var opt = document.createElement('option');
@@ -316,33 +350,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     pigQtdSelect.appendChild(opt2);
   }
 
-  // Listener para mudanças de sessão
-  supabaseClient.auth.onAuthStateChange(function(event, session) {
-    if (event === 'SIGNED_OUT') {
-      window.location.href = 'index.html';
-    }
-  });
-
   switchPage('agendamentos');
 });
-
-/* ===== NOVO: Aplicar controle de acesso por role ===== */
-function applyRoleAccess() {
-  // Admin-only: visível para admin e master_admin
-  document.querySelectorAll('.admin-only, .nav-admin-only').forEach(function(el) {
-    if (!isAdmin()) {
-      el.remove(); // Remove do DOM, não apenas esconde via CSS
-    }
-  });
-
-  // Master-only: visível apenas para master_admin
-  document.querySelectorAll('.master-only').forEach(function(el) {
-    if (!isMasterAdmin()) {
-      el.remove();
-    }
-  });
-}
-
 
 /* ===== PHONE MASK ===== */
 function maskTelefone(input) {
@@ -450,11 +459,7 @@ function renderFilterChips() {
     chip.innerHTML = avatarHtml + '<span>' + name + '</span>';
     chip.onclick = function() {
       var idx = activeFilters.indexOf(name);
-      if (idx >= 0) {
-        activeFilters.splice(idx, 1);
-      } else {
-        activeFilters.push(name);
-      }
+      if (idx >= 0) { activeFilters.splice(idx, 1); } else { activeFilters.push(name); }
       renderFilterChips();
       renderCalendar();
       renderDayDetail();
@@ -555,9 +560,7 @@ function renderCalendar() {
     if (hasApt) btn.classList.add('has-appointment');
 
     btn.addEventListener('click', (function(day) {
-      return function() {
-        selectedDay = day; renderCalendar(); renderDayDetail();
-      };
+      return function() { selectedDay = day; renderCalendar(); renderDayDetail(); };
     })(d));
     container.appendChild(btn);
   }
@@ -594,61 +597,39 @@ function renderDayDetail() {
 function renderSingleTimeline(container, dayAppointments) {
   container.className = 'timeline-container';
   var html = '<div class="timeline">';
-
   for (var h = 7; h <= 21; h++) {
-    html += '<div class="timeline-row">';
-    html += '<div class="timeline-hour">' + pad(h) + ':00</div>';
-    html += '<div class="timeline-slot" data-hour="' + h + '"></div>';
-    html += '</div>';
+    html += '<div class="timeline-row"><div class="timeline-hour">' + pad(h) + ':00</div><div class="timeline-slot" data-hour="' + h + '"></div></div>';
   }
-  html += '<div class="timeline-blocks" id="timeline-blocks"></div>';
-  html += '</div>';
+  html += '<div class="timeline-blocks" id="timeline-blocks"></div></div>';
   container.innerHTML = html;
 
   var blocksContainer = document.getElementById('timeline-blocks');
-  dayAppointments.forEach(function(a) {
-    renderTimelineBlock(blocksContainer, a, 0, 1);
-  });
+  dayAppointments.forEach(function(a) { renderTimelineBlock(blocksContainer, a, 0, 1); });
 }
 
 function renderMultiAgenda(container, dayAppointments, dateStr) {
   container.className = 'multi-agenda-container';
   var html = '<div class="multi-agenda">';
-
   html += '<div class="multi-agenda-header"><div class="timeline-hour-header"></div>';
   activeFilters.forEach(function(name) {
     var avatarHtml = getAvatarHtml(name, 'avatar--sm');
     html += '<div class="multi-agenda-col-header">' + avatarHtml + '<span>' + name + '</span></div>';
   });
-  html += '</div>';
-
-  html += '<div class="multi-agenda-body">';
+  html += '</div><div class="multi-agenda-body">';
   for (var h = 7; h <= 21; h++) {
-    html += '<div class="multi-agenda-row">';
-    html += '<div class="timeline-hour">' + pad(h) + ':00</div>';
-    activeFilters.forEach(function(name) {
-      html += '<div class="multi-agenda-cell" data-prof="' + name + '" data-hour="' + h + '"></div>';
-    });
+    html += '<div class="multi-agenda-row"><div class="timeline-hour">' + pad(h) + ':00</div>';
+    activeFilters.forEach(function(name) { html += '<div class="multi-agenda-cell" data-prof="' + name + '" data-hour="' + h + '"></div>'; });
     html += '</div>';
   }
   html += '</div>';
-
-  activeFilters.forEach(function(name) {
-    html += '<div class="multi-agenda-blocks" data-prof-col="' + name + '"></div>';
-  });
-
+  activeFilters.forEach(function(name) { html += '<div class="multi-agenda-blocks" data-prof-col="' + name + '"></div>'; });
   html += '</div>';
   container.innerHTML = html;
 
   activeFilters.forEach(function(name, colIdx) {
-    var profApps = dayAppointments.filter(function(a) {
-      var profs = getAppointmentProfessionals(a);
-      return profs.indexOf(name) >= 0;
-    });
+    var profApps = dayAppointments.filter(function(a) { return getAppointmentProfessionals(a).indexOf(name) >= 0; });
     var blocksEl = container.querySelector('.multi-agenda-blocks[data-prof-col="' + name + '"]');
-    profApps.forEach(function(a) {
-      renderTimelineBlock(blocksEl, a, colIdx, activeFilters.length);
-    });
+    profApps.forEach(function(a) { renderTimelineBlock(blocksEl, a, colIdx, activeFilters.length); });
   });
 }
 
@@ -675,9 +656,7 @@ function renderTimelineBlock(container, a, colIdx, totalCols) {
     block.style.width = colWidth + '%';
   }
 
-  block.innerHTML = '<div class="tb-time">' + a.hora + '</div>' +
-    '<div class="tb-client">' + a.cliente + '</div>' +
-    '<div class="tb-service">' + serviceNames + '</div>';
+  block.innerHTML = '<div class="tb-time">' + a.hora + '</div><div class="tb-client">' + a.cliente + '</div><div class="tb-service">' + serviceNames + '</div>';
   block.onclick = function() { openAgendamentoParaEditar(a); };
   container.appendChild(block);
 }
@@ -690,7 +669,6 @@ function openAgendamentoModal(agId, clienteNome, clienteTel) {
   document.getElementById('ag-telefone').value = clienteTel || '';
   document.getElementById('modal-agendamento-titulo').textContent = agId ? 'Editar Agendamento' : 'Novo Agendamento';
   document.getElementById('btn-excluir-agendamento').style.display = agId ? 'flex' : 'none';
-
   document.getElementById('servicos-container').innerHTML = '';
 
   if (!agId) {
@@ -704,14 +682,9 @@ function openAgendamentoModal(agId, clienteNome, clienteTel) {
 
 function openAgendamentoParaEditar(a) {
   openAgendamentoModal(a.id, a.cliente, a.telefone);
-
   var servicos = getAppointmentServicos(a);
   document.getElementById('servicos-container').innerHTML = '';
-
-  servicos.forEach(function(s) {
-    adicionarBlocoServicoComDados(s);
-  });
-
+  servicos.forEach(function(s) { adicionarBlocoServicoComDados(s); });
   document.getElementById('ag-data').value = a.data;
   document.getElementById('ag-hora').value = a.hora;
 }
@@ -719,9 +692,7 @@ function openAgendamentoParaEditar(a) {
 /* ===== MULTI-SERVICE BLOCKS ===== */
 var servicoBlockCounter = 0;
 
-function adicionarBlocoServico() {
-  adicionarBlocoServicoComDados(null);
-}
+function adicionarBlocoServico() { adicionarBlocoServicoComDados(null); }
 
 function adicionarBlocoServicoComDados(dados) {
   var container = document.getElementById('servicos-container');
@@ -761,9 +732,7 @@ function adicionarBlocoServicoComDados(dados) {
       var basesContainer = extrasDiv.querySelector('.bases-container');
       if (basesContainer) {
         basesContainer.innerHTML = '';
-        dados.bases.forEach(function(b) {
-          adicionarCampoBaseComValor(basesContainer, b.cor, b.qtd);
-        });
+        dados.bases.forEach(function(b) { adicionarCampoBaseComValor(basesContainer, b.cor, b.qtd); });
       }
     }
 
@@ -772,9 +741,7 @@ function adicionarBlocoServicoComDados(dados) {
       var pigContainer = extrasDiv2.querySelector('.pig-container');
       if (pigContainer) {
         pigContainer.innerHTML = '';
-        dados.pigmentacoes.forEach(function(p) {
-          adicionarPigmentacaoComValor(pigContainer, p.cor, p.qtd);
-        });
+        dados.pigmentacoes.forEach(function(p) { adicionarPigmentacaoComValor(pigContainer, p.cor, p.qtd); });
       }
     }
   }
@@ -803,7 +770,7 @@ function onSvcProfChange(selectEl) {
   var block = selectEl.closest('.servico-block');
   var svcSelect = block.querySelector('.svc-servico');
   svcSelect.innerHTML = '<option value="">Selecione...</option>';
-  var services = professionals[prof] || [];
+  var services = getProfServiceNames(prof);
   services.forEach(function(s) {
     var opt = document.createElement('option');
     opt.value = s; opt.textContent = s;
@@ -823,10 +790,12 @@ function onSvcServicoChange(selectEl) {
   var isRubia = prof === 'Rubia';
 
   if (isColoracao) {
+    // Carregar cores dinâmicas do serviço
+    var cores = getCoresDoServico('Coloração');
+
     if (isRubia) {
-      var baseLabel = 'Base';
       extrasDiv.innerHTML =
-        '<div class="form-group"><label>' + baseLabel + '</label>' +
+        '<div class="form-group"><label>Base</label>' +
         '<div class="bases-container"></div>' +
         '<button type="button" class="btn-add-cor" onclick="adicionarCampoBase(this)"><i class="fa-solid fa-circle-plus"></i> Adicionar outra base</button>' +
         '</div>' +
@@ -837,19 +806,18 @@ function onSvcServicoChange(selectEl) {
       adicionarCampoBase(extrasDiv.querySelector('.btn-add-cor'));
     } else {
       extrasDiv.innerHTML =
-        '<div class="form-group"><label>Cor</label>' +
+        '<div class="form-group"><label>Cores</label>' +
         '<div class="cores-container"></div>' +
-        '<button type="button" class="btn-add-cor" onclick="adicionarCorSimples(this)"><i class="fa-solid fa-circle-plus"></i> Adicionar outra cor</button>' +
+        '<button type="button" class="btn-add-cor" onclick="adicionarCorSimples(this)"><i class="fa-solid fa-circle-plus"></i> Adicionar cor</button>' +
         '</div>';
       adicionarCorSimples(extrasDiv.querySelector('.btn-add-cor'));
     }
   }
 }
 
-/* ===== BASE (Rubia + Coloração) ===== */
+/* ===== BASE / PIGMENTAÇÃO / COR (DINÂMICO) ===== */
 function adicionarCampoBase(btn) {
-  var container = btn ? btn.closest('.form-group').querySelector('.bases-container') : null;
-  if (!container) return;
+  var container = btn.closest('.form-group').querySelector('.bases-container');
   adicionarCampoBaseComValor(container, '', '');
 }
 
@@ -864,11 +832,8 @@ function adicionarCampoBaseComValor(container, corVal, qtdVal) {
   var label = document.createElement('span');
   label.className = 'cor-label placeholder';
   label.textContent = 'Selecione base';
-
   var qtdBadge = document.createElement('span');
   qtdBadge.className = 'base-qtd-badge';
-  qtdBadge.textContent = '';
-
   var removeBtn = document.createElement('button');
   removeBtn.type = 'button';
   removeBtn.className = 'cor-remove-btn';
@@ -882,20 +847,24 @@ function adicionarCampoBaseComValor(container, corVal, qtdVal) {
 
   var dropdown = document.createElement('div');
   dropdown.className = 'base-grid-dropdown';
-  colorOptions.forEach(function(opt) {
-    if (opt.code === 'Nenhuma') return;
+
+  // Usar cores dinâmicas
+  var cores = getCoresDoServico('Coloração');
+  var baseCores = cores.base;
+
+  baseCores.forEach(function(opt) {
     var item = document.createElement('div');
     item.className = 'base-grid-option';
     item.style.background = opt.hex;
-    item.title = opt.code;
-    item.innerHTML = '<span class="base-grid-code">' + opt.code + '</span>';
+    item.title = opt.nome;
+    item.innerHTML = '<span class="base-grid-code">' + opt.nome + '</span>';
     item.onclick = function(e) {
       e.stopPropagation();
       swatch.style.background = opt.hex;
       swatch.style.borderStyle = 'solid';
-      label.textContent = opt.code;
+      label.textContent = opt.nome;
       label.className = 'cor-label';
-      wrapper.dataset.cor = opt.code;
+      wrapper.dataset.cor = opt.nome;
       dropdown.classList.remove('open');
       pendingBaseCallback = function(qtd) {
         wrapper.dataset.qtd = qtd;
@@ -916,18 +885,14 @@ function adicionarCampoBaseComValor(container, corVal, qtdVal) {
   wrapper.appendChild(dropdown);
 
   if (corVal) {
-    var opt = colorOptions.find(function(o) { return o.code === corVal; });
-    if (opt) {
-      swatch.style.background = opt.hex;
-      swatch.style.borderStyle = 'solid';
-      label.textContent = opt.code;
-      label.className = 'cor-label';
-      wrapper.dataset.cor = corVal;
+    var o = baseCores.find(function(x) { return x.nome === corVal; });
+    // Fallback: buscar em colorOptions (compatibilidade com dados antigos)
+    if (!o) {
+      var legacy = colorOptions.find(function(x) { return x.code === corVal; });
+      if (legacy) o = { nome: legacy.code, hex: legacy.hex };
     }
-    if (qtdVal) {
-      wrapper.dataset.qtd = qtdVal;
-      qtdBadge.textContent = qtdVal + 'g';
-    }
+    if (o) { swatch.style.background = o.hex; swatch.style.borderStyle = 'solid'; label.textContent = o.nome; label.className = 'cor-label'; wrapper.dataset.cor = corVal; }
+    if (qtdVal) { wrapper.dataset.qtd = qtdVal; qtdBadge.textContent = qtdVal + 'g'; }
   }
 
   container.appendChild(wrapper);
@@ -935,14 +900,10 @@ function adicionarCampoBaseComValor(container, corVal, qtdVal) {
 
 function confirmarBaseQtd() {
   var qtd = document.getElementById('base-qtd-select').value;
-  if (pendingBaseCallback) {
-    pendingBaseCallback(qtd);
-    pendingBaseCallback = null;
-  }
+  if (pendingBaseCallback) { pendingBaseCallback(qtd); pendingBaseCallback = null; }
   closeModal('modal-base-qtd');
 }
 
-/* ===== PIGMENTAÇÃO ===== */
 function adicionarPigmentacao(btn) {
   var container = btn.closest('.form-group').querySelector('.pig-container');
   adicionarPigmentacaoComValor(container, '', '');
@@ -974,19 +935,24 @@ function adicionarPigmentacaoComValor(container, corVal, qtdVal) {
 
   var dropdown = document.createElement('div');
   dropdown.className = 'pig-dropdown';
-  pigmentOptions.forEach(function(opt) {
+
+  // Usar cores dinâmicas
+  var cores = getCoresDoServico('Coloração');
+  var pigCores = cores.pigmento;
+
+  pigCores.forEach(function(opt) {
     var item = document.createElement('div');
     item.className = 'pig-option';
     item.style.background = opt.hex;
-    item.title = opt.code;
-    item.innerHTML = '<span class="pig-code">' + opt.code + '</span>';
+    item.title = opt.nome;
+    item.innerHTML = '<span class="pig-code">' + opt.nome + '</span>';
     item.onclick = function(e) {
       e.stopPropagation();
       swatch.style.background = opt.hex;
       swatch.style.borderStyle = 'solid';
-      label.textContent = opt.code;
+      label.textContent = opt.nome;
       label.className = 'cor-label';
-      wrapper.dataset.cor = opt.code;
+      wrapper.dataset.cor = opt.nome;
       dropdown.classList.remove('open');
       pendingPigmentoCallback = function(qtd) {
         wrapper.dataset.qtd = qtd;
@@ -1007,18 +973,13 @@ function adicionarPigmentacaoComValor(container, corVal, qtdVal) {
   wrapper.appendChild(dropdown);
 
   if (corVal) {
-    var opt = pigmentOptions.find(function(o) { return o.code === corVal; });
-    if (opt) {
-      swatch.style.background = opt.hex;
-      swatch.style.borderStyle = 'solid';
-      label.textContent = opt.code;
-      label.className = 'cor-label';
-      wrapper.dataset.cor = corVal;
+    var o = pigCores.find(function(x) { return x.nome === corVal; });
+    if (!o) {
+      var legacy = pigmentOptions.find(function(x) { return x.code === corVal; });
+      if (legacy) o = { nome: legacy.code, hex: legacy.hex };
     }
-    if (qtdVal) {
-      wrapper.dataset.qtd = qtdVal;
-      qtdBadge.textContent = qtdVal + 'g';
-    }
+    if (o) { swatch.style.background = o.hex; swatch.style.borderStyle = 'solid'; label.textContent = o.nome; label.className = 'cor-label'; wrapper.dataset.cor = corVal; }
+    if (qtdVal) { wrapper.dataset.qtd = qtdVal; qtdBadge.textContent = qtdVal + 'g'; }
   }
 
   container.appendChild(wrapper);
@@ -1026,14 +987,10 @@ function adicionarPigmentacaoComValor(container, corVal, qtdVal) {
 
 function confirmarPigmentoQtd() {
   var qtd = document.getElementById('pigmento-qtd-select').value;
-  if (pendingPigmentoCallback) {
-    pendingPigmentoCallback(qtd);
-    pendingPigmentoCallback = null;
-  }
+  if (pendingPigmentoCallback) { pendingPigmentoCallback(qtd); pendingPigmentoCallback = null; }
   closeModal('modal-pigmento-qtd');
 }
 
-/* ===== COR SIMPLES ===== */
 function adicionarCorSimples(btn) {
   var container = btn.closest('.form-group').querySelector('.cores-container');
   if (container.children.length >= 5) return;
@@ -1069,17 +1026,27 @@ function adicionarCorSimplesComValor(container, valor) {
 
   var dropdown = document.createElement('div');
   dropdown.className = 'cor-dropdown';
-  colorOptions.forEach(function(opt) {
+
+  // Usar cores dinâmicas (base do serviço Coloração para seleção simples)
+  var cores = getCoresDoServico('Coloração');
+  var allCores = cores.base.concat(cores.pigmento);
+
+  // Fallback para colorOptions se não há cores dinâmicas
+  if (allCores.length === 0) {
+    allCores = colorOptions.map(function(o) { return { nome: o.code, hex: o.hex }; });
+  }
+
+  allCores.forEach(function(opt) {
     var item = document.createElement('div');
     item.className = 'cor-option';
-    item.innerHTML = '<span class="cor-swatch" style="background:' + opt.hex + ';border:1px solid rgba(255,255,255,0.15)"></span><span>' + opt.code + '</span>';
+    item.innerHTML = '<span class="cor-swatch" style="background:' + opt.hex + ';border:1px solid rgba(255,255,255,0.15)"></span><span>' + opt.nome + '</span>';
     item.onclick = function(e) {
       e.stopPropagation();
       swatch.style.background = opt.hex;
       swatch.style.borderStyle = 'solid';
-      label.textContent = opt.code;
+      label.textContent = opt.nome;
       label.className = 'cor-label';
-      wrapper.dataset.cor = opt.code;
+      wrapper.dataset.cor = opt.nome;
       dropdown.classList.remove('open');
     };
     dropdown.appendChild(item);
@@ -1095,14 +1062,12 @@ function adicionarCorSimplesComValor(container, valor) {
   wrapper.appendChild(dropdown);
 
   if (valor) {
-    var opt = colorOptions.find(function(o) { return o.code === valor; });
-    if (opt) {
-      swatch.style.background = opt.hex;
-      swatch.style.borderStyle = 'solid';
-      label.textContent = opt.code;
-      label.className = 'cor-label';
-      wrapper.dataset.cor = opt.code;
+    var o = allCores.find(function(x) { return x.nome === valor; });
+    if (!o) {
+      var legacy = colorOptions.find(function(x) { return x.code === valor; });
+      if (legacy) o = { nome: legacy.code, hex: legacy.hex };
     }
+    if (o) { swatch.style.background = o.hex; swatch.style.borderStyle = 'solid'; label.textContent = o.nome; label.className = 'cor-label'; wrapper.dataset.cor = valor; }
   }
 
   container.appendChild(wrapper);
@@ -1125,21 +1090,13 @@ function collectServicos() {
     var svc = { profissional: prof, servico: servico, bases: [], pigmentacoes: [], cores: [] };
 
     block.querySelectorAll('.base-item').forEach(function(bi) {
-      if (bi.dataset.cor) {
-        svc.bases.push({ cor: bi.dataset.cor, qtd: parseInt(bi.dataset.qtd) || 0 });
-      }
+      if (bi.dataset.cor) svc.bases.push({ cor: bi.dataset.cor, qtd: parseInt(bi.dataset.qtd) || 0 });
     });
-
     block.querySelectorAll('.pig-item').forEach(function(pi) {
-      if (pi.dataset.cor) {
-        svc.pigmentacoes.push({ cor: pi.dataset.cor, qtd: parseInt(pi.dataset.qtd) || 0 });
-      }
+      if (pi.dataset.cor) svc.pigmentacoes.push({ cor: pi.dataset.cor, qtd: parseInt(pi.dataset.qtd) || 0 });
     });
-
     block.querySelectorAll('.cores-container .cor-select-wrapper').forEach(function(cw) {
-      if (cw.dataset.cor && cw.dataset.cor !== 'Nenhuma') {
-        svc.cores.push(cw.dataset.cor);
-      }
+      if (cw.dataset.cor && cw.dataset.cor !== 'Nenhuma') svc.cores.push(cw.dataset.cor);
     });
 
     servicos.push(svc);
@@ -1191,9 +1148,7 @@ async function saveAppointment(e) {
 }
 
 /* ===== EXCLUSÃO ===== */
-function confirmarExclusao() {
-  openModal('modal-confirmar-exclusao');
-}
+function confirmarExclusao() { openModal('modal-confirmar-exclusao'); }
 
 async function excluirAgendamento() {
   if (!editingAppointmentId) return;
@@ -1291,7 +1246,6 @@ async function openHistorico(cliente) {
     todos.forEach(function(h) {
       var dataF = h.data ? h.data.split('-').reverse().join('/') : '-';
       var svcList = [];
-
       var svcs = h.servicos ? (typeof h.servicos === 'string' ? JSON.parse(h.servicos) : h.servicos) : null;
 
       if (svcs && svcs.length > 0) {
@@ -1354,23 +1308,322 @@ async function openHistorico(cliente) {
   conteudo.innerHTML = html;
 }
 
-/* ===== PROFESSIONALS PAGE ===== */
+/* ===== PROFESSIONALS PAGE (DINÂMICO + CRUD) ===== */
 function renderProfessionals() {
   var container = document.getElementById('professionals-grid');
   container.innerHTML = '';
+
   Object.keys(professionals).forEach(function(name) {
     var card = document.createElement('div');
     card.className = 'professional-card';
     var services = professionals[name].map(function(s) {
-      var sp = servicePrices[s];
-      var dur = sp ? sp.duracao + 'min' : '';
-      return '<li><i class="fa-solid fa-scissors"></i>' + s + (dur ? ' <span class="svc-dur">(' + dur + ')</span>' : '') + '</li>';
+      var dur = s.duracao ? s.duracao + 'min' : '';
+      var preco = s.preco ? ' R$' + s.preco.toFixed(0) : '';
+      return '<li><i class="fa-solid fa-scissors"></i>' + s.nome + (dur ? ' <span class="svc-dur">(' + dur + preco + ')</span>' : '') + '</li>';
     }).join('');
 
+    var editBtn = '';
+    if (isAdmin()) {
+      editBtn = '<button class="btn-edit-prof" onclick="openModalVincularServicos(\'' + name + '\')"><i class="fa-solid fa-pen"></i></button>';
+    }
+
     var avatarHtml = getAvatarHtml(name, '');
-    card.innerHTML = '<div class="card-header">' + avatarHtml + '<span class="name">' + name + '</span></div><ul class="services-list">' + services + '</ul>';
+    card.innerHTML = '<div class="card-header">' + avatarHtml + '<span class="name">' + name + '</span>' + editBtn + '</div><ul class="services-list">' + services + '</ul>';
     container.appendChild(card);
   });
+}
+
+/* ===== MODAL: Gerenciar Serviços (CRUD) ===== */
+function openModalGerenciarServicos() {
+  renderListaServicos();
+  openModal('modal-gerenciar-servicos');
+}
+
+function renderListaServicos() {
+  var container = document.getElementById('lista-servicos-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  allServicos.forEach(function(s) {
+    var row = document.createElement('div');
+    row.className = 'servico-crud-row';
+
+    // Verificar se o serviço tem cores associadas
+    var temCores = coresPorServico[s.id] && (coresPorServico[s.id].base.length > 0 || coresPorServico[s.id].pigmento.length > 0);
+    var coresBtn = '';
+    if (isAdmin() && s.usa_cores) {
+      var coresCount = temCores ? ' (' + ((coresPorServico[s.id] || {base:[], pigmento:[]}).base.length + (coresPorServico[s.id] || {base:[], pigmento:[]}).pigmento.length) + ')' : '';
+      coresBtn = '<button class="btn-icon btn-cores-svc" onclick="openGerenciarCoresServico(\'' + s.id + '\')" title="Gerenciar cores"><i class="fa-solid fa-palette"></i>' + coresCount + '</button>';
+    }
+
+    row.innerHTML =
+      '<span class="servico-crud-nome">' + s.nome + '</span>' +
+      '<span class="servico-crud-info">R$' + parseFloat(s.preco).toFixed(0) + ' · ' + s.duracao + 'min</span>' +
+      '<div class="servico-crud-actions">' +
+      coresBtn +
+      '<button class="btn-icon" onclick="openEditarServico(\'' + s.id + '\')"><i class="fa-solid fa-pen"></i></button>' +
+      '<button class="btn-icon btn-danger" onclick="confirmarExcluirServico(\'' + s.id + '\')"><i class="fa-solid fa-trash"></i></button>' +
+      '</div>';
+    container.appendChild(row);
+  });
+}
+
+function openCriarServico() {
+  document.getElementById('svc-crud-id').value = '';
+  document.getElementById('svc-crud-nome').value = '';
+  document.getElementById('svc-crud-preco').value = '';
+  document.getElementById('svc-crud-duracao').value = '';
+  document.getElementById('svc-crud-usa-cores').checked = false;
+  document.getElementById('modal-crud-servico-titulo').textContent = 'Novo Serviço';
+  openModal('modal-crud-servico');
+}
+
+function openEditarServico(id) {
+  var svc = allServicos.find(function(s) { return s.id === id; });
+  if (!svc) return;
+  document.getElementById('svc-crud-id').value = svc.id;
+  document.getElementById('svc-crud-nome').value = svc.nome;
+  document.getElementById('svc-crud-preco').value = svc.preco;
+  document.getElementById('svc-crud-duracao').value = svc.duracao;
+  document.getElementById('svc-crud-usa-cores').checked = svc.usa_cores || false;
+  document.getElementById('modal-crud-servico-titulo').textContent = 'Editar Serviço';
+  openModal('modal-crud-servico');
+}
+
+async function salvarServicoCrud(e) {
+  e.preventDefault();
+  var id = document.getElementById('svc-crud-id').value;
+  var nome = document.getElementById('svc-crud-nome').value.trim();
+  var preco = parseFloat(document.getElementById('svc-crud-preco').value);
+  var duracao = parseInt(document.getElementById('svc-crud-duracao').value);
+  var usa_cores = document.getElementById('svc-crud-usa-cores').checked;
+
+  if (!nome || isNaN(preco) || isNaN(duracao)) { showToast('Preencha todos os campos!'); return; }
+
+  if (id) {
+    var ok = await editarServico(id, nome, preco, duracao, usa_cores);
+    if (!ok) { showToast('Erro ao atualizar serviço!'); return; }
+    showToast('Serviço atualizado!');
+  } else {
+    var result = await criarServico(nome, preco, duracao, usa_cores);
+    if (!result) { showToast('Erro ao criar serviço!'); return; }
+    showToast('Serviço criado!');
+  }
+
+  closeModal('modal-crud-servico');
+  await loadServicos();
+  await loadProfissionalServicos();
+  renderListaServicos();
+  renderProfessionals();
+}
+
+async function confirmarExcluirServico(id) {
+  if (!confirm('Tem certeza que deseja excluir este serviço? Isso também removerá todos os vínculos com profissionais.')) return;
+  var ok = await excluirServico(id);
+  if (!ok) { showToast('Erro ao excluir serviço!'); return; }
+  showToast('Serviço removido!');
+  await loadServicos();
+  await loadProfissionalServicos();
+  renderListaServicos();
+  renderProfessionals();
+}
+
+/* ===== MODAL: Gerenciar Cores de um Serviço ===== */
+var gerenciarCoresServicoId = null;
+
+function openGerenciarCoresServico(servicoId) {
+  gerenciarCoresServicoId = servicoId;
+  var svc = allServicos.find(function(s) { return s.id === servicoId; });
+  document.getElementById('cores-servico-nome').textContent = svc ? svc.nome : '';
+  renderListaCoresServico();
+  openModal('modal-gerenciar-cores');
+}
+
+function renderListaCoresServico() {
+  var container = document.getElementById('cores-servico-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  var cores = coresPorServico[gerenciarCoresServicoId] || { base: [], pigmento: [] };
+
+  // Seção Base
+  var baseHtml = '<div class="cores-section">';
+  baseHtml += '<div class="cores-section-header"><h4><i class="fa-solid fa-droplet"></i> Base</h4>';
+  baseHtml += '<button class="btn-add-cor-small" onclick="openCriarCor(\'base\')"><i class="fa-solid fa-plus"></i></button></div>';
+  baseHtml += '<div class="cores-list">';
+
+  if (cores.base.length === 0) {
+    baseHtml += '<p class="cores-empty">Nenhuma cor de base cadastrada</p>';
+  } else {
+    cores.base.forEach(function(c) {
+      baseHtml += '<div class="cor-crud-row">' +
+        '<span class="cor-crud-swatch" style="background:' + c.hex + '"></span>' +
+        '<span class="cor-crud-nome">' + c.nome + '</span>' +
+        '<span class="cor-crud-hex">' + c.hex + '</span>' +
+        '<div class="cor-crud-actions">' +
+        '<button class="btn-icon" onclick="openEditarCor(\'' + c.id + '\')"><i class="fa-solid fa-pen"></i></button>' +
+        '<button class="btn-icon btn-danger" onclick="confirmarExcluirCor(\'' + c.id + '\')"><i class="fa-solid fa-trash"></i></button>' +
+        '</div></div>';
+    });
+  }
+  baseHtml += '</div></div>';
+
+  // Seção Pigmento
+  var pigHtml = '<div class="cores-section">';
+  pigHtml += '<div class="cores-section-header"><h4><i class="fa-solid fa-fill-drip"></i> Pigmentação</h4>';
+  pigHtml += '<button class="btn-add-cor-small" onclick="openCriarCor(\'pigmento\')"><i class="fa-solid fa-plus"></i></button></div>';
+  pigHtml += '<div class="cores-list">';
+
+  if (cores.pigmento.length === 0) {
+    pigHtml += '<p class="cores-empty">Nenhuma cor de pigmentação cadastrada</p>';
+  } else {
+    cores.pigmento.forEach(function(c) {
+      pigHtml += '<div class="cor-crud-row">' +
+        '<span class="cor-crud-swatch" style="background:' + c.hex + '"></span>' +
+        '<span class="cor-crud-nome">' + c.nome + '</span>' +
+        '<span class="cor-crud-hex">' + c.hex + '</span>' +
+        '<div class="cor-crud-actions">' +
+        '<button class="btn-icon" onclick="openEditarCor(\'' + c.id + '\')"><i class="fa-solid fa-pen"></i></button>' +
+        '<button class="btn-icon btn-danger" onclick="confirmarExcluirCor(\'' + c.id + '\')"><i class="fa-solid fa-trash"></i></button>' +
+        '</div></div>';
+    });
+  }
+  pigHtml += '</div></div>';
+
+  container.innerHTML = baseHtml + pigHtml;
+}
+
+/* ===== MODAL: Criar/Editar Cor ===== */
+var editingCorTipo = 'base';
+
+function openCriarCor(tipo) {
+  editingCorTipo = tipo;
+  document.getElementById('cor-crud-id').value = '';
+  document.getElementById('cor-crud-nome').value = '';
+  document.getElementById('cor-crud-hex').value = '#888888';
+  document.getElementById('cor-crud-picker').value = '#888888';
+  document.getElementById('cor-crud-preview').style.background = '#888888';
+  document.getElementById('modal-crud-cor-titulo').textContent = 'Nova Cor (' + (tipo === 'base' ? 'Base' : 'Pigmentação') + ')';
+  openModal('modal-crud-cor');
+}
+
+function openEditarCor(corId) {
+  // Buscar cor em todas as listas
+  var cor = null;
+  var tipo = '';
+  Object.keys(coresPorServico).forEach(function(sid) {
+    coresPorServico[sid].base.forEach(function(c) { if (c.id === corId) { cor = c; tipo = 'base'; } });
+    coresPorServico[sid].pigmento.forEach(function(c) { if (c.id === corId) { cor = c; tipo = 'pigmento'; } });
+  });
+
+  if (!cor) return;
+
+  editingCorTipo = tipo;
+  document.getElementById('cor-crud-id').value = cor.id;
+  document.getElementById('cor-crud-nome').value = cor.nome;
+  document.getElementById('cor-crud-hex').value = cor.hex;
+  document.getElementById('cor-crud-picker').value = cor.hex;
+  document.getElementById('cor-crud-preview').style.background = cor.hex;
+  document.getElementById('modal-crud-cor-titulo').textContent = 'Editar Cor';
+  openModal('modal-crud-cor');
+}
+
+function onCorPickerChange(picker) {
+  document.getElementById('cor-crud-hex').value = picker.value;
+  document.getElementById('cor-crud-preview').style.background = picker.value;
+}
+
+function onCorHexInput(input) {
+  var hex = input.value.trim();
+  if (/^#[0-9A-Fa-f]{6}$/.test(hex)) {
+    document.getElementById('cor-crud-picker').value = hex;
+    document.getElementById('cor-crud-preview').style.background = hex;
+  }
+}
+
+async function salvarCorCrud(e) {
+  e.preventDefault();
+  var id = document.getElementById('cor-crud-id').value;
+  var nome = document.getElementById('cor-crud-nome').value.trim();
+  var hex = document.getElementById('cor-crud-hex').value.trim();
+
+  if (!nome) { showToast('Nome da cor é obrigatório!'); return; }
+  if (!hex || !hex.startsWith('#')) { showToast('HEX inválido! Deve começar com #'); return; }
+  if (!/^#[0-9A-Fa-f]{6}$/.test(hex)) { showToast('HEX inválido! Formato: #RRGGBB'); return; }
+
+  if (id) {
+    var ok = await editarCor(id, nome, hex);
+    if (!ok) { showToast('Erro ao atualizar cor!'); return; }
+    showToast('Cor atualizada!');
+  } else {
+    var result = await criarCor(nome, hex, editingCorTipo, gerenciarCoresServicoId);
+    if (!result) { showToast('Erro ao criar cor!'); return; }
+    showToast('Cor criada!');
+  }
+
+  closeModal('modal-crud-cor');
+  await loadCores();
+  renderListaCoresServico();
+  renderListaServicos();
+}
+
+async function confirmarExcluirCor(corId) {
+  if (!confirm('Tem certeza que deseja excluir esta cor?')) return;
+  var ok = await excluirCor(corId);
+  if (!ok) { showToast('Erro ao excluir cor!'); return; }
+  showToast('Cor removida!');
+  await loadCores();
+  renderListaCoresServico();
+  renderListaServicos();
+}
+
+/* ===== MODAL: Vincular Serviços a Profissional ===== */
+function openModalVincularServicos(profNome) {
+  document.getElementById('vincular-prof-nome').textContent = profNome;
+  document.getElementById('vincular-prof-nome').dataset.prof = profNome;
+
+  var container = document.getElementById('vincular-servicos-list');
+  container.innerHTML = '';
+
+  var profSvcs = professionals[profNome] || [];
+  var profSvcIds = profSvcs.map(function(s) { return s.id; });
+
+  allServicos.forEach(function(s) {
+    var checked = profSvcIds.indexOf(s.id) >= 0 ? 'checked' : '';
+    var row = document.createElement('label');
+    row.className = 'vincular-servico-item';
+    row.innerHTML = '<input type="checkbox" value="' + s.id + '" ' + checked + '> ' + s.nome + ' <span class="svc-dur">(R$' + parseFloat(s.preco).toFixed(0) + ' · ' + s.duracao + 'min)</span>';
+    container.appendChild(row);
+  });
+
+  openModal('modal-vincular-servicos');
+}
+
+async function salvarVinculosServicos() {
+  var profNome = document.getElementById('vincular-prof-nome').dataset.prof;
+  var checkboxes = document.querySelectorAll('#vincular-servicos-list input[type="checkbox"]');
+
+  var profSvcs = professionals[profNome] || [];
+  var profSvcIds = profSvcs.map(function(s) { return s.id; });
+
+  var promises = [];
+  checkboxes.forEach(function(cb) {
+    var svcId = cb.value;
+    var wasLinked = profSvcIds.indexOf(svcId) >= 0;
+    var isLinked = cb.checked;
+
+    if (isLinked && !wasLinked) {
+      promises.push(vincularServicoProfissional(profNome, svcId));
+    } else if (!isLinked && wasLinked) {
+      promises.push(desvincularServicoProfissional(profNome, svcId));
+    }
+  });
+
+  await Promise.all(promises);
+  showToast('Vínculos atualizados!');
+  closeModal('modal-vincular-servicos');
+  await loadProfissionalServicos();
+  renderProfessionals();
 }
 
 /* ===== DASHBOARD ===== */
@@ -1478,12 +1731,9 @@ async function loadDashboard() {
 /* ===== SVG Line Chart ===== */
 function renderLineChart(profHoraFat) {
   var chartDiv = document.getElementById('dash-chart-horarios');
-
   var allHours = [];
   Object.keys(profHoraFat).forEach(function(prof) {
-    Object.keys(profHoraFat[prof]).forEach(function(h) {
-      if (allHours.indexOf(h) < 0) allHours.push(h);
-    });
+    Object.keys(profHoraFat[prof]).forEach(function(h) { if (allHours.indexOf(h) < 0) allHours.push(h); });
   });
   allHours.sort();
 
@@ -1494,21 +1744,12 @@ function renderLineChart(profHoraFat) {
 
   var maxVal = 0;
   Object.keys(profHoraFat).forEach(function(prof) {
-    allHours.forEach(function(h) {
-      var v = profHoraFat[prof][h] || 0;
-      if (v > maxVal) maxVal = v;
-    });
+    allHours.forEach(function(h) { var v = profHoraFat[prof][h] || 0; if (v > maxVal) maxVal = v; });
   });
   if (maxVal === 0) maxVal = 100;
 
-  var width = 800;
-  var height = 280;
-  var padLeft = 80;
-  var padRight = 20;
-  var padTop = 20;
-  var padBottom = 40;
-  var chartW = width - padLeft - padRight;
-  var chartH = height - padTop - padBottom;
+  var width = 800, height = 280, padLeft = 80, padRight = 20, padTop = 20, padBottom = 40;
+  var chartW = width - padLeft - padRight, chartH = height - padTop - padBottom;
 
   var legendHtml = '<div class="dash-chart-legend">';
   Object.keys(professionals).forEach(function(name) {
@@ -1545,8 +1786,7 @@ function renderLineChart(profHoraFat) {
     if (points.length > 1) {
       var pathD = 'M' + points[0].x + ',' + points[0].y;
       for (var pi = 1; pi < points.length; pi++) {
-        var prev = points[pi - 1];
-        var curr = points[pi];
+        var prev = points[pi - 1], curr = points[pi];
         var cpx = (prev.x + curr.x) / 2;
         pathD += ' C' + cpx + ',' + prev.y + ' ' + cpx + ',' + curr.y + ' ' + curr.x + ',' + curr.y;
       }
@@ -1554,9 +1794,7 @@ function renderLineChart(profHoraFat) {
     }
 
     points.forEach(function(p) {
-      if (p.val > 0) {
-        svg += '<circle cx="' + p.x + '" cy="' + p.y + '" r="5" fill="' + color + '" stroke="#141414" stroke-width="2"/>';
-      }
+      if (p.val > 0) svg += '<circle cx="' + p.x + '" cy="' + p.y + '" r="5" fill="' + color + '" stroke="#141414" stroke-width="2"/>';
     });
   });
 
@@ -1570,9 +1808,7 @@ function formatCurrency(val) {
 }
 
 function formatCurrencyShort(val) {
-  if (val >= 1000) {
-    return 'R$ ' + (val / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) + 'k';
-  }
+  if (val >= 1000) return 'R$ ' + (val / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) + 'k';
   return 'R$ ' + val.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
