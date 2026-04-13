@@ -50,7 +50,7 @@ var pigmentOptions = [
    Exemplo: 'Rhai': 'https://seusite.com/fotos/rhai.jpg'
 */
 var professionalAvatars = {
-  'Rhai': 'rhai.png',
+  'Rhai': 'rhai.jpg',
   'Rubia': 'rubia.jpg',
   'Pablo': 'pablo.jpg'
 };
@@ -175,7 +175,9 @@ document.addEventListener('DOMContentLoaded', async function() {
   currentUser.nome = sessionStorage.getItem('userName') || '';
   currentUser.role = sessionStorage.getItem('userRole') || 'colaborador';
 
-  document.getElementById('user-info').innerHTML = '<span style="color:var(--gold);font-weight:600">' + currentUser.nome + '</span><span style="color:var(--text-muted);font-size:0.8rem;margin-left:8px">(' + currentUser.role + ')</span>';
+  // Sidebar user info with avatar
+  var userAvatarHtml = getAvatarHtml(currentUser.nome, 'avatar--sidebar');
+  document.getElementById('user-info').innerHTML = userAvatarHtml + '<div class="user-details"><span class="user-name">' + currentUser.nome + '</span><span class="user-role">' + currentUser.role + '</span></div>';
 
   if (currentUser.role !== 'admin') {
     document.querySelectorAll('.admin-only, .nav-admin-only').forEach(function(el) {
@@ -372,7 +374,7 @@ function renderFilterChips() {
     var chip = document.createElement('button');
     chip.className = 'filter-chip' + (activeFilters.indexOf(name) >= 0 ? ' active' : '');
     // Avatar
-    var avatarHtml = getAvatarHtml(name, 'filter-chip-avatar');
+    var avatarHtml = getAvatarHtml(name, 'avatar--chip');
     chip.innerHTML = avatarHtml + '<span>' + name + '</span>';
     chip.onclick = function() {
       var idx = activeFilters.indexOf(name);
@@ -389,13 +391,14 @@ function renderFilterChips() {
   });
 }
 
-/* ===== FIX #7: Avatar helper ===== */
-function getAvatarHtml(name, cssClass) {
+/* ===== FIX #7: Avatar helper (unified .avatar system) ===== */
+function getAvatarHtml(name, sizeClass) {
   var url = professionalAvatars[name];
+  var classes = 'avatar' + (sizeClass ? ' ' + sizeClass : '');
   if (url) {
-    return '<div class="' + cssClass + '"><img src="' + url + '" alt="' + name + '"></div>';
+    return '<div class="' + classes + '"><img src="' + url + '" alt="' + name + '" decoding="async" fetchpriority="high"></div>';
   }
-  return '<div class="' + cssClass + '">' + name.charAt(0).toUpperCase() + '</div>';
+  return '<div class="' + classes + '">' + name.charAt(0).toUpperCase() + '</div>';
 }
 
 /* ===== HELPER: Get professionals from appointment ===== */
@@ -543,7 +546,7 @@ function renderMultiAgenda(container, dayAppointments, dateStr) {
   // FIX #7: Header row with avatars
   html += '<div class="multi-agenda-header"><div class="timeline-hour-header"></div>';
   activeFilters.forEach(function(name) {
-    var avatarHtml = getAvatarHtml(name, 'multi-col-avatar');
+    var avatarHtml = getAvatarHtml(name, 'avatar--sm');
     html += '<div class="multi-agenda-col-header">' + avatarHtml + '<span>' + name + '</span></div>';
   });
   html += '</div>';
@@ -1295,15 +1298,8 @@ function renderProfessionals() {
       return '<li><i class="fa-solid fa-scissors"></i>' + s + (dur ? ' <span class="svc-dur">(' + dur + ')</span>' : '') + '</li>';
     }).join('');
 
-    var avatarUrl = professionalAvatars[name];
-    var avatarContent;
-    if (avatarUrl) {
-      avatarContent = '<img src="' + avatarUrl + '" alt="' + name + '">';
-    } else {
-      avatarContent = name.charAt(0).toUpperCase();
-    }
-
-    card.innerHTML = '<div class="card-header"><div class="avatar">' + avatarContent + '</div><span class="name">' + name + '</span></div><ul class="services-list">' + services + '</ul>';
+    var avatarHtml = getAvatarHtml(name, '');
+    card.innerHTML = '<div class="card-header">' + avatarHtml + '<span class="name">' + name + '</span></div><ul class="services-list">' + services + '</ul>';
     container.appendChild(card);
   });
 }
