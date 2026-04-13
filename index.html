@@ -16,45 +16,64 @@
       <h1>BEAUTY LOUNGE</h1>
       <p class="subtitle">Salão de Beleza</p>
       <div class="form-group">
-        <input type="text" id="login-user" placeholder="Usuário" autocomplete="username">
+        <input type="email" id="login-email" placeholder="Email" autocomplete="email">
       </div>
       <div class="form-group">
         <input type="password" id="login-pass" placeholder="Senha" autocomplete="current-password">
       </div>
       <button class="btn-login" id="btn-login">Entrar</button>
-      <p class="login-error" id="login-error">Usuário ou senha inválidos</p>
+      <p class="login-error" id="login-error"></p>
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabaseClient.js"></script>
   <script>
-    var users = {
-      'rhai':  { senha: 'Rhai123@@',  nome: 'Rhai',  role: 'admin' },
-      'rubia': { senha: 'Rubia123@@', nome: 'Rubia', role: 'admin' },
-      'pablo': { senha: 'Pablo.123',  nome: 'Pablo', role: 'colaborador' }
-    };
+    // Verificar se já está logado
+    (async function() {
+      var { data: { session } } = await supabaseClient.auth.getSession();
+      if (session) {
+        window.location.href = 'agenda.html';
+      }
+    })();
 
     document.getElementById('btn-login').addEventListener('click', login);
     document.getElementById('login-pass').addEventListener('keydown', function(e) {
       if (e.key === 'Enter') login();
     });
-    document.getElementById('login-user').addEventListener('keydown', function(e) {
+    document.getElementById('login-email').addEventListener('keydown', function(e) {
       if (e.key === 'Enter') document.getElementById('login-pass').focus();
     });
 
-    function login() {
-      var user = document.getElementById('login-user').value.trim().toLowerCase();
-      var pass = document.getElementById('login-pass').value;
-      var u = users[user];
-      if (u && u.senha === pass) {
-        sessionStorage.setItem('logged', 'true');
-        sessionStorage.setItem('userName', u.nome);
-        sessionStorage.setItem('userRole', u.role);
-        window.location.href = 'agenda.html';
-      } else {
-        var err = document.getElementById('login-error');
-        err.style.display = 'block';
-        setTimeout(function() { err.style.display = 'none'; }, 3000);
+    async function login() {
+      var email = document.getElementById('login-email').value.trim().toLowerCase();
+      var password = document.getElementById('login-pass').value;
+      var errEl = document.getElementById('login-error');
+
+      if (!email || !password) {
+        errEl.textContent = 'Preencha email e senha.';
+        errEl.style.display = 'block';
+        return;
       }
+
+      errEl.textContent = 'Entrando...';
+      errEl.style.display = 'block';
+      errEl.style.color = 'var(--text-muted)';
+
+      var { data, error } = await supabaseClient.auth.signInWithPassword({
+        email: email,
+        password: password
+      });
+
+      if (error) {
+        errEl.style.color = '#e74c3c';
+        errEl.textContent = 'Email ou senha inválidos.';
+        setTimeout(function() { errEl.style.display = 'none'; }, 3000);
+        return;
+      }
+
+      // Login OK — redirecionar
+      window.location.href = 'agenda.html';
     }
   </script>
 </body>
