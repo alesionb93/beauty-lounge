@@ -95,6 +95,11 @@
       <div class="page" id="page-profissionais">
         <div class="page-header">
           <h2>Profissionais & Serviços</h2>
+          <div class="page-header-actions">
+            <button class="btn-filter admin-only" id="btn-gerenciar-servicos" onclick="openModalGerenciarServicos()" style="display:none;">
+              <i class="fa-solid fa-gear"></i> Gerenciar Serviços
+            </button>
+          </div>
         </div>
         <div class="professionals-grid" id="professionals-grid"></div>
       </div>
@@ -273,7 +278,7 @@
     </div>
   </div>
 
-  <!-- MODAL: Quantidade de Pigmentação (gramas) - FIX #3 -->
+  <!-- MODAL: Quantidade de Pigmentação (gramas) -->
   <div class="modal-overlay" id="modal-pigmento-qtd">
     <div class="modal modal-small">
       <div class="modal-header">
@@ -327,6 +332,118 @@
         <button class="modal-close" onclick="closeModal('modal-historico')">&times;</button>
       </div>
       <div id="historico-conteudo"></div>
+    </div>
+  </div>
+
+  <!-- MODAL: Gerenciar Serviços -->
+  <div class="modal-overlay" id="modal-gerenciar-servicos">
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <h3>Gerenciar Serviços</h3>
+        <button class="modal-close" onclick="closeModal('modal-gerenciar-servicos')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="servico-crud-header">
+          <button class="btn-novo" onclick="openCriarServico()"><i class="fa-solid fa-plus"></i> Novo Serviço</button>
+        </div>
+        <div id="lista-servicos-container"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Criar/Editar Serviço -->
+  <div class="modal-overlay" id="modal-crud-servico">
+    <div class="modal modal-small">
+      <div class="modal-header">
+        <h3 id="modal-crud-servico-titulo">Novo Serviço</h3>
+        <button class="modal-close" onclick="closeModal('modal-crud-servico')">&times;</button>
+      </div>
+      <form onsubmit="salvarServicoCrud(event)">
+        <input type="hidden" id="svc-crud-id">
+        <div class="form-group">
+          <label>Nome do Serviço</label>
+          <input type="text" id="svc-crud-nome" required placeholder="Ex: Corte Feminino">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Preço (R$)</label>
+            <input type="number" id="svc-crud-preco" required step="0.01" min="0" placeholder="150.00">
+          </div>
+          <div class="form-group">
+            <label>Duração (min)</label>
+            <input type="number" id="svc-crud-duracao" required min="5" step="5" placeholder="60">
+          </div>
+        </div>
+        <div class="form-group" style="margin-top: 8px;">
+          <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="svc-crud-usa-cores">
+            <span>🎨 Este serviço utiliza sistema de cores</span>
+          </label>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" onclick="closeModal('modal-crud-servico')">Cancelar</button>
+          <button type="submit" class="btn-submit">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Vincular Serviços a Profissional -->
+  <div class="modal-overlay" id="modal-vincular-servicos">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Serviços de <span id="vincular-prof-nome"></span></h3>
+        <button class="modal-close" onclick="closeModal('modal-vincular-servicos')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="vincular-servicos-list" class="vincular-servicos-list"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal('modal-vincular-servicos')">Cancelar</button>
+        <button class="btn-submit" onclick="salvarVinculosServicos()">Salvar Vínculos</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Gerenciar Cores do Serviço -->
+  <div class="modal-overlay" id="modal-gerenciar-cores">
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <h3>🎨 Cores — <span id="cores-servico-nome"></span></h3>
+        <button class="modal-close" onclick="closeModal('modal-gerenciar-cores')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="cores-servico-container"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Criar/Editar Cor -->
+  <div class="modal-overlay" id="modal-crud-cor">
+    <div class="modal modal-small">
+      <div class="modal-header">
+        <h3 id="modal-crud-cor-titulo">Nova Cor</h3>
+        <button class="modal-close" onclick="closeModal('modal-crud-cor')">&times;</button>
+      </div>
+      <form onsubmit="salvarCorCrud(event)">
+        <input type="hidden" id="cor-crud-id">
+        <div class="form-group">
+          <label>Nome da cor</label>
+          <input type="text" id="cor-crud-nome" required placeholder="Ex: 1-0">
+        </div>
+        <div class="form-group">
+          <label>Cor</label>
+          <div class="cor-picker-row">
+            <input type="color" id="cor-crud-picker" value="#888888" onchange="onCorPickerChange(this)">
+            <input type="text" id="cor-crud-hex" value="#888888" placeholder="#RRGGBB" oninput="onCorHexInput(this)" maxlength="7">
+            <div class="cor-crud-preview" id="cor-crud-preview" style="background:#888888"></div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" onclick="closeModal('modal-crud-cor')">Cancelar</button>
+          <button type="submit" class="btn-submit">Salvar</button>
+        </div>
+      </form>
     </div>
   </div>
 
