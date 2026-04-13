@@ -184,7 +184,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
 
   if (currentUser.role === 'admin') {
-    activeFilters = Object.keys(professionals);
+    activeFilters = [currentUser.nome];
   } else {
     activeFilters = [currentUser.nome];
   }
@@ -260,7 +260,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   // FIX #3: Populate pigmento qty select in GRAMS (5g to 120g, step 5)
   var pigQtdSelect = document.getElementById('pigmento-qtd-select');
-  for (var pg = 5; pg <= 120; pg += 5) {
+  for (var pg = 1; pg <= 10; pg += 1) {
     var opt2 = document.createElement('option');
     opt2.value = pg; opt2.textContent = pg + 'g';
     pigQtdSelect.appendChild(opt2);
