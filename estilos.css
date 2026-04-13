@@ -595,6 +595,10 @@ body {
   transition: border var(--transition);
 }
 
+.form-group input[type="checkbox"] {
+  width: auto;
+}
+
 .form-group input:focus,
 .form-group select:focus { border-color: var(--gold); }
 
