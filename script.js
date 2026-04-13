@@ -50,7 +50,7 @@ var pigmentOptions = [
    Exemplo: 'Rhai': 'https://seusite.com/fotos/rhai.jpg'
 */
 var professionalAvatars = {
-  'Rhai': '',
+  'Rhai': 'rhai.png',
   'Rubia': '',
   'Pablo': ''
 };
