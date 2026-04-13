@@ -2,21 +2,15 @@
 var professionals = {};   // { 'Rhai': [ {id, nome, preco, duracao}, ... ], ... }
 var servicePrices = {};    // { 'Nanopigmentação': {preco:650, duracao:90}, ... }
 var allServicos = [];      // [ {id, nome, preco, duracao}, ... ]
+var allProfissionais = []; // [ {id, nome, foto_url}, ... ]  <-- NOVO
 
 /* ===== CORES DINÂMICAS (carregadas do Supabase) ===== */
 var coresPorServico = {};  // { servicoId: { base: [{id,nome,hex}], pigmento: [{id,nome,hex}] } }
 
-var colorOptions = [];     // Compatibilidade — será preenchido dinamicamente
-var pigmentOptions = [];   // Compatibilidade — será preenchido dinamicamente
-
 var colorOptions = [];
 var pigmentOptions = [];
 
-var professionalAvatars = {
-  'Rhai': 'rhai.jpg',
-  'Rubia': 'rubia.jpg',
-  'Pablo': 'pablo.jpg'
-};
+var professionalAvatars = {};  // Agora dinâmico, preenchido via loadProfissionais
 
 var clients = [];
 var appointments = [];
@@ -34,11 +28,8 @@ var currentMonth = today.getMonth();
 var currentYear = today.getFullYear();
 var selectedDay = today.getDate();
 
-var profColors = {
-  'Rhai': '#5bc0de',
-  'Rubia': '#9b59b6',
-  'Pablo': '#e91e90'
-};
+var profColors = {};  // Agora dinâmico
+var profColorPalette = ['#5bc0de', '#9b59b6', '#e91e90', '#2ecc71', '#e67e22', '#3498db', '#e74c3c', '#1abc9c', '#f39c12', '#8e44ad'];
 
 /* ===== SUPABASE HELPERS ===== */
 async function loadClients() {
@@ -67,12 +58,28 @@ async function loadAppointments() {
   });
 }
 
-/* ===== NOVO: Carregar serviços do Supabase ===== */
+/* ===== NOVO: Carregar profissionais do Supabase ===== */
+async function loadProfissionais() {
+  var resp = await supabaseClient.from('profissionais').select('*').order('nome');
+  if (resp.error) { console.error('Erro profissionais:', resp.error); return; }
+  allProfissionais = resp.data || [];
+
+  // Rebuild professionalAvatars e profColors
+  professionalAvatars = {};
+  profColors = {};
+  allProfissionais.forEach(function(p, idx) {
+    if (p.foto_url) {
+      professionalAvatars[p.nome] = p.foto_url;
+    }
+    profColors[p.nome] = profColorPalette[idx % profColorPalette.length];
+  });
+}
+
+/* ===== Carregar serviços do Supabase ===== */
 async function loadServicos() {
   var resp = await supabaseClient.from('servicos').select('*').order('nome');
   if (resp.error) { console.error('Erro servicos:', resp.error); return; }
   allServicos = resp.data || [];
-  // Rebuild servicePrices lookup
   servicePrices = {};
   allServicos.forEach(function(s) {
     servicePrices[s.nome] = { preco: parseFloat(s.preco), duracao: s.duracao };
@@ -83,6 +90,10 @@ async function loadProfissionalServicos() {
   var resp = await supabaseClient.from('profissional_servicos').select('profissional_nome, servico_id, servicos(id, nome, preco, duracao)');
   if (resp.error) { console.error('Erro prof_servicos:', resp.error); return; }
   professionals = {};
+  // Garantir que todos os profissionais da tabela apareçam
+  allProfissionais.forEach(function(p) {
+    if (!professionals[p.nome]) professionals[p.nome] = [];
+  });
   (resp.data || []).forEach(function(ps) {
     var prof = ps.profissional_nome;
     if (!professionals[prof]) professionals[prof] = [];
@@ -100,7 +111,7 @@ async function loadProfissionalServicos() {
   });
 }
 
-/* ===== NOVO: Carregar cores do Supabase ===== */
+/* ===== Carregar cores do Supabase ===== */
 async function loadCores() {
   var resp = await supabaseClient.from('cores').select('*').order('nome');
   if (resp.error) { console.error('Erro cores:', resp.error); return; }
@@ -114,7 +125,6 @@ async function loadCores() {
     var item = { id: c.id, nome: c.nome, hex: c.hex };
     if (c.tipo === 'base') {
       coresPorServico[sid].base.push(item);
-      // Compatibilidade
       if (!colorOptions.some(function(x) { return x.code === c.nome; })) {
         colorOptions.push({ code: c.nome, hex: c.hex });
       }
@@ -275,11 +285,14 @@ document.addEventListener('DOMContentLoaded', async function() {
   } else {
     var btnGerenciar = document.getElementById('btn-gerenciar-servicos');
     if (btnGerenciar) btnGerenciar.style.display = '';
+    var btnAddProf = document.getElementById('btn-add-profissional');
+    if (btnAddProf) btnAddProf.style.display = '';
   }
 
   activeFilters = [currentUser.nome];
 
-  // Carregar dados (serviços primeiro, depois cores, depois o resto)
+  // Carregar dados (profissionais primeiro, depois serviços, cores, e resto)
+  await loadProfissionais();
   await loadServicos();
   await loadProfissionalServicos();
   await loadCores();
@@ -292,6 +305,18 @@ document.addEventListener('DOMContentLoaded', async function() {
       var page = this.dataset.page;
       if (page === 'dashboard' && !isAdmin()) return;
       switchPage(page);
+    });
+  });
+
+  // Configurações tabs
+  document.querySelectorAll('.config-tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      var tabName = this.dataset.configTab;
+      if (tabName === 'usuarios' && !isAdmin()) return;
+      document.querySelectorAll('.config-tab').forEach(function(t) { t.classList.remove('active'); });
+      document.querySelectorAll('.config-panel').forEach(function(p) { p.classList.remove('active'); });
+      this.classList.add('active');
+      document.getElementById('config-' + tabName).classList.add('active');
     });
   });
 
@@ -420,6 +445,7 @@ function switchPage(page) {
   if (page === 'clientes') { renderClients(); }
   if (page === 'profissionais') { renderProfessionals(); }
   if (page === 'dashboard') { initDashboard(); }
+  if (page === 'configuracoes') { initConfiguracoes(); }
 
   closeSidebar();
 }
@@ -475,7 +501,7 @@ function getAvatarHtml(name, sizeClass) {
   if (url) {
     return '<div class="' + classes + '"><img src="' + url + '" alt="' + name + '" decoding="async" fetchpriority="high"></div>';
   }
-  return '<div class="' + classes + '">' + name.charAt(0).toUpperCase() + '</div>';
+  return '<div class="' + classes + '">' + (name ? name.charAt(0).toUpperCase() : '?') + '</div>';
 }
 
 /* ===== HELPER: Get professionals from appointment ===== */
@@ -790,7 +816,6 @@ function onSvcServicoChange(selectEl) {
   var isRubia = prof === 'Rubia';
 
   if (isColoracao) {
-    // Carregar cores dinâmicas do serviço
     var cores = getCoresDoServico('Coloração');
 
     if (isRubia) {
@@ -848,7 +873,6 @@ function adicionarCampoBaseComValor(container, corVal, qtdVal) {
   var dropdown = document.createElement('div');
   dropdown.className = 'base-grid-dropdown';
 
-  // Usar cores dinâmicas
   var cores = getCoresDoServico('Coloração');
   var baseCores = cores.base;
 
@@ -886,7 +910,6 @@ function adicionarCampoBaseComValor(container, corVal, qtdVal) {
 
   if (corVal) {
     var o = baseCores.find(function(x) { return x.nome === corVal; });
-    // Fallback: buscar em colorOptions (compatibilidade com dados antigos)
     if (!o) {
       var legacy = colorOptions.find(function(x) { return x.code === corVal; });
       if (legacy) o = { nome: legacy.code, hex: legacy.hex };
@@ -919,7 +942,7 @@ function adicionarPigmentacaoComValor(container, corVal, qtdVal) {
   swatch.className = 'cor-swatch';
   var label = document.createElement('span');
   label.className = 'cor-label placeholder';
-  label.textContent = 'Selecione pigmentação';
+  label.textContent = 'Selecione pigmento';
   var qtdBadge = document.createElement('span');
   qtdBadge.className = 'base-qtd-badge';
   var removeBtn = document.createElement('button');
@@ -936,7 +959,6 @@ function adicionarPigmentacaoComValor(container, corVal, qtdVal) {
   var dropdown = document.createElement('div');
   dropdown.className = 'pig-dropdown';
 
-  // Usar cores dinâmicas
   var cores = getCoresDoServico('Coloração');
   var pigCores = cores.pigmento;
 
@@ -965,7 +987,7 @@ function adicionarPigmentacaoComValor(container, corVal, qtdVal) {
 
   display.onclick = function(e) {
     e.stopPropagation();
-    document.querySelectorAll('.pig-dropdown.open, .base-grid-dropdown.open, .cor-dropdown.open').forEach(function(d) { if (d !== dropdown) d.classList.remove('open'); });
+    document.querySelectorAll('.base-grid-dropdown.open, .pig-dropdown.open, .cor-dropdown.open').forEach(function(d) { if (d !== dropdown) d.classList.remove('open'); });
     dropdown.classList.toggle('open');
   };
 
@@ -1027,11 +1049,9 @@ function adicionarCorSimplesComValor(container, valor) {
   var dropdown = document.createElement('div');
   dropdown.className = 'cor-dropdown';
 
-  // Usar cores dinâmicas (base do serviço Coloração para seleção simples)
   var cores = getCoresDoServico('Coloração');
   var allCores = cores.base.concat(cores.pigmento);
 
-  // Fallback para colorOptions se não há cores dinâmicas
   if (allCores.length === 0) {
     allCores = colorOptions.map(function(o) { return { nome: o.code, hex: o.hex }; });
   }
@@ -1324,12 +1344,301 @@ function renderProfessionals() {
 
     var editBtn = '';
     if (isAdmin()) {
-      editBtn = '<button class="btn-edit-prof" onclick="openModalVincularServicos(\'' + name + '\')"><i class="fa-solid fa-pen"></i></button>';
+      editBtn = '<button class="btn-edit-prof" onclick="openModalEditarProfissional(\'' + name.replace(/'/g, "\\'") + '\')"><i class="fa-solid fa-pen"></i></button>';
     }
 
     var avatarHtml = getAvatarHtml(name, '');
     card.innerHTML = '<div class="card-header">' + avatarHtml + '<span class="name">' + name + '</span>' + editBtn + '</div><ul class="services-list">' + services + '</ul>';
     container.appendChild(card);
+  });
+
+  if (Object.keys(professionals).length === 0) {
+    container.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding: 40px;">Nenhum profissional cadastrado. Clique em "Adicionar Profissional" para começar.</p>';
+  }
+}
+
+/* ========================================== */
+/* PROFISSIONAIS CRUD (NOVO!)                 */
+/* ========================================== */
+
+var novoProfFotoFile = null;
+var editProfFotoFile = null;
+var editProfFotoRemoved = false;
+var editingProfId = null;
+
+function openModalCriarProfissional() {
+  document.getElementById('novo-prof-nome').value = '';
+  document.getElementById('novo-prof-avatar-preview').innerHTML = '';
+  document.getElementById('novo-prof-avatar-preview').textContent = '?';
+  novoProfFotoFile = null;
+
+  // Renderizar lista de serviços para selecionar
+  var container = document.getElementById('novo-prof-servicos-list');
+  container.innerHTML = '';
+  allServicos.forEach(function(s) {
+    var row = document.createElement('label');
+    row.className = 'vincular-servico-item';
+    row.innerHTML = '<input type="checkbox" value="' + s.id + '"> ' + s.nome + ' <span class="svc-dur">(R$' + parseFloat(s.preco).toFixed(0) + ' · ' + s.duracao + 'min)</span>';
+    container.appendChild(row);
+  });
+
+  var feedback = document.getElementById('criar-prof-feedback');
+  if (feedback) feedback.style.display = 'none';
+
+  openModal('modal-criar-profissional');
+}
+
+function onNovoProfFotoChange(input) {
+  if (input.files && input.files[0]) {
+    novoProfFotoFile = input.files[0];
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var avatarEl = document.getElementById('novo-prof-avatar-preview');
+      avatarEl.innerHTML = '<img src="' + e.target.result + '" alt="Foto">';
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+async function salvarNovoProfissional(e) {
+  e.preventDefault();
+  var nome = document.getElementById('novo-prof-nome').value.trim();
+  var feedback = document.getElementById('criar-prof-feedback');
+
+  if (!nome) {
+    feedback.style.display = 'block';
+    feedback.style.color = '#e74c3c';
+    feedback.textContent = 'Nome é obrigatório!';
+    return;
+  }
+
+  // Verificar se já existe
+  var exists = allProfissionais.find(function(p) { return p.nome.toLowerCase() === nome.toLowerCase(); });
+  if (exists) {
+    feedback.style.display = 'block';
+    feedback.style.color = '#e74c3c';
+    feedback.textContent = 'Já existe um profissional com este nome!';
+    return;
+  }
+
+  feedback.style.display = 'block';
+  feedback.style.color = 'var(--text-muted)';
+  feedback.textContent = 'Criando profissional...';
+
+  // Upload da foto se tiver
+  var fotoUrl = '';
+  if (novoProfFotoFile) {
+    fotoUrl = await uploadProfFoto(novoProfFotoFile, nome);
+  }
+
+  // Inserir na tabela profissionais
+  var resp = await supabaseClient.from('profissionais').insert([{
+    nome: nome,
+    foto_url: fotoUrl
+  }]).select();
+
+  if (resp.error) {
+    feedback.style.color = '#e74c3c';
+    feedback.textContent = 'Erro ao criar profissional: ' + resp.error.message;
+    return;
+  }
+
+  // Vincular serviços selecionados
+  var checkboxes = document.querySelectorAll('#novo-prof-servicos-list input[type="checkbox"]:checked');
+  var promises = [];
+  checkboxes.forEach(function(cb) {
+    promises.push(vincularServicoProfissional(nome, cb.value));
+  });
+  await Promise.all(promises);
+
+  feedback.style.display = 'none';
+  closeModal('modal-criar-profissional');
+  showToast('Profissional criado com sucesso!');
+
+  // Recarregar dados
+  await loadProfissionais();
+  await loadProfissionalServicos();
+  renderProfessionals();
+}
+
+function openModalEditarProfissional(profNome) {
+  var prof = allProfissionais.find(function(p) { return p.nome === profNome; });
+  if (!prof) return;
+
+  editingProfId = prof.id;
+  editProfFotoFile = null;
+  editProfFotoRemoved = false;
+
+  document.getElementById('edit-prof-id').value = prof.id;
+  document.getElementById('edit-prof-old-nome').value = prof.nome;
+  document.getElementById('edit-prof-nome').value = prof.nome;
+
+  // Avatar preview
+  var avatarEl = document.getElementById('edit-prof-avatar-preview');
+  if (prof.foto_url) {
+    avatarEl.innerHTML = '<img src="' + prof.foto_url + '" alt="' + prof.nome + '">';
+  } else {
+    avatarEl.innerHTML = '';
+    avatarEl.textContent = prof.nome.charAt(0).toUpperCase();
+  }
+
+  // Vincular serviços
+  var container = document.getElementById('vincular-servicos-list');
+  container.innerHTML = '';
+  var profSvcs = professionals[profNome] || [];
+  var profSvcIds = profSvcs.map(function(s) { return s.id; });
+
+  allServicos.forEach(function(s) {
+    var checked = profSvcIds.indexOf(s.id) >= 0 ? 'checked' : '';
+    var row = document.createElement('label');
+    row.className = 'vincular-servico-item';
+    row.innerHTML = '<input type="checkbox" value="' + s.id + '" ' + checked + '> ' + s.nome + ' <span class="svc-dur">(R$' + parseFloat(s.preco).toFixed(0) + ' · ' + s.duracao + 'min)</span>';
+    container.appendChild(row);
+  });
+
+  openModal('modal-vincular-servicos');
+}
+
+function onEditProfFotoChange(input) {
+  if (input.files && input.files[0]) {
+    editProfFotoFile = input.files[0];
+    editProfFotoRemoved = false;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var avatarEl = document.getElementById('edit-prof-avatar-preview');
+      avatarEl.innerHTML = '<img src="' + e.target.result + '" alt="Foto">';
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+function removerEditProfFoto() {
+  editProfFotoFile = null;
+  editProfFotoRemoved = true;
+  var avatarEl = document.getElementById('edit-prof-avatar-preview');
+  var nome = document.getElementById('edit-prof-nome').value || '?';
+  avatarEl.innerHTML = '';
+  avatarEl.textContent = nome.charAt(0).toUpperCase();
+}
+
+async function salvarEdicaoProfissional() {
+  var id = document.getElementById('edit-prof-id').value;
+  var oldNome = document.getElementById('edit-prof-old-nome').value;
+  var novoNome = document.getElementById('edit-prof-nome').value.trim();
+
+  if (!novoNome) { showToast('Nome é obrigatório!'); return; }
+
+  // Upload da foto se mudou
+  var updateData = { nome: novoNome };
+
+  if (editProfFotoFile) {
+    var fotoUrl = await uploadProfFoto(editProfFotoFile, novoNome);
+    updateData.foto_url = fotoUrl;
+  } else if (editProfFotoRemoved) {
+    updateData.foto_url = '';
+  }
+
+  // Atualizar na tabela profissionais
+  var resp = await supabaseClient.from('profissionais').update(updateData).eq('id', id);
+  if (resp.error) {
+    showToast('Erro ao atualizar profissional: ' + resp.error.message);
+    return;
+  }
+
+  // Se o nome mudou, atualizar profissional_servicos
+  if (oldNome !== novoNome) {
+    await supabaseClient.from('profissional_servicos').update({ profissional_nome: novoNome }).eq('profissional_nome', oldNome);
+    // Atualizar agendamentos existentes
+    await supabaseClient.from('agendamentos').update({ profissional: novoNome }).eq('profissional', oldNome);
+  }
+
+  // Atualizar vínculos de serviços
+  var checkboxes = document.querySelectorAll('#vincular-servicos-list input[type="checkbox"]');
+  var profSvcs = professionals[oldNome] || [];
+  var profSvcIds = profSvcs.map(function(s) { return s.id; });
+
+  var promises = [];
+  checkboxes.forEach(function(cb) {
+    var svcId = cb.value;
+    var wasLinked = profSvcIds.indexOf(svcId) >= 0;
+    var isLinked = cb.checked;
+    // Usar o nome correto (novoNome) para vincular
+    if (isLinked && !wasLinked) {
+      promises.push(vincularServicoProfissional(novoNome, svcId));
+    } else if (!isLinked && wasLinked) {
+      promises.push(desvincularServicoProfissional(oldNome !== novoNome ? novoNome : oldNome, svcId));
+    }
+  });
+  await Promise.all(promises);
+
+  closeModal('modal-vincular-servicos');
+  showToast('Profissional atualizado!');
+
+  // Recarregar dados
+  await loadProfissionais();
+  await loadProfissionalServicos();
+  renderProfessionals();
+}
+
+function confirmarExcluirProfissional() {
+  openModal('modal-confirmar-excluir-prof');
+}
+
+async function executarExcluirProfissional() {
+  var id = document.getElementById('edit-prof-id').value;
+  var nome = document.getElementById('edit-prof-old-nome').value;
+
+  // Remover vínculos de serviços
+  await supabaseClient.from('profissional_servicos').delete().eq('profissional_nome', nome);
+
+  // Remover profissional
+  var resp = await supabaseClient.from('profissionais').delete().eq('id', id);
+  if (resp.error) {
+    showToast('Erro ao excluir profissional: ' + resp.error.message);
+    closeModal('modal-confirmar-excluir-prof');
+    return;
+  }
+
+  closeModal('modal-confirmar-excluir-prof');
+  closeModal('modal-vincular-servicos');
+  showToast('Profissional excluído!');
+
+  await loadProfissionais();
+  await loadProfissionalServicos();
+  renderProfessionals();
+}
+
+/* Upload de foto do profissional */
+async function uploadProfFoto(file, profNome) {
+  // Tentar upload via Supabase Storage
+  var fileExt = file.name.split('.').pop();
+  var fileName = profNome.toLowerCase().replace(/\s+/g, '_') + '_' + Date.now() + '.' + fileExt;
+
+  try {
+    var resp = await supabaseClient.storage.from('profissionais').upload(fileName, file, {
+      cacheControl: '3600',
+      upsert: true
+    });
+
+    if (resp.error) {
+      console.warn('Storage upload falhou (bucket pode não existir):', resp.error.message);
+      // Fallback: usar data URL (temporário, não persiste entre sessões de forma ideal)
+      return await fileToDataUrl(file);
+    }
+
+    var urlResp = supabaseClient.storage.from('profissionais').getPublicUrl(fileName);
+    return urlResp.data.publicUrl;
+  } catch (err) {
+    console.warn('Erro no upload:', err);
+    return await fileToDataUrl(file);
+  }
+}
+
+function fileToDataUrl(file) {
+  return new Promise(function(resolve) {
+    var reader = new FileReader();
+    reader.onload = function(e) { resolve(e.target.result); };
+    reader.readAsDataURL(file);
   });
 }
 
@@ -1348,7 +1657,6 @@ function renderListaServicos() {
     var row = document.createElement('div');
     row.className = 'servico-crud-row';
 
-    // Verificar se o serviço tem cores associadas
     var temCores = coresPorServico[s.id] && (coresPorServico[s.id].base.length > 0 || coresPorServico[s.id].pigmento.length > 0);
     var coresBtn = '';
     if (isAdmin() && s.usa_cores) {
@@ -1418,7 +1726,7 @@ async function salvarServicoCrud(e) {
 }
 
 async function confirmarExcluirServico(id) {
-  if (!confirm('Tem certeza que deseja excluir este serviço? Isso também removerá todos os vínculos com profissionais.')) return;
+  if (!confirm('Tem certeza que deseja excluir este serviço?')) return;
   var ok = await excluirServico(id);
   if (!ok) { showToast('Erro ao excluir serviço!'); return; }
   showToast('Serviço removido!');
@@ -1428,7 +1736,7 @@ async function confirmarExcluirServico(id) {
   renderProfessionals();
 }
 
-/* ===== MODAL: Gerenciar Cores de um Serviço ===== */
+/* ===== GERENCIAR CORES DO SERVIÇO ===== */
 var gerenciarCoresServicoId = null;
 
 function openGerenciarCoresServico(servicoId) {
@@ -1441,23 +1749,20 @@ function openGerenciarCoresServico(servicoId) {
 
 function renderListaCoresServico() {
   var container = document.getElementById('cores-servico-container');
-  if (!container) return;
+  if (!container || !gerenciarCoresServicoId) return;
   container.innerHTML = '';
 
   var cores = coresPorServico[gerenciarCoresServicoId] || { base: [], pigmento: [] };
 
   // Seção Base
-  var baseHtml = '<div class="cores-section">';
-  baseHtml += '<div class="cores-section-header"><h4><i class="fa-solid fa-droplet"></i> Base</h4>';
-  baseHtml += '<button class="btn-add-cor-small" onclick="openCriarCor(\'base\')"><i class="fa-solid fa-plus"></i></button></div>';
+  var baseHtml = '<div class="cores-section"><div class="cores-section-header"><h4><i class="fa-solid fa-droplet"></i> Base</h4>';
+  baseHtml += '<button class="btn-add-cor-small" onclick="openCriarCor(\'base\')"><i class="fa-solid fa-plus"></i> Nova base</button></div>';
   baseHtml += '<div class="cores-list">';
-
   if (cores.base.length === 0) {
-    baseHtml += '<p class="cores-empty">Nenhuma cor de base cadastrada</p>';
+    baseHtml += '<p class="cores-empty">Nenhuma cor de base cadastrada.</p>';
   } else {
     cores.base.forEach(function(c) {
-      baseHtml += '<div class="cor-crud-row">' +
-        '<span class="cor-crud-swatch" style="background:' + c.hex + '"></span>' +
+      baseHtml += '<div class="cor-crud-row"><div class="cor-crud-swatch" style="background:' + c.hex + '"></div>' +
         '<span class="cor-crud-nome">' + c.nome + '</span>' +
         '<span class="cor-crud-hex">' + c.hex + '</span>' +
         '<div class="cor-crud-actions">' +
@@ -1468,18 +1773,15 @@ function renderListaCoresServico() {
   }
   baseHtml += '</div></div>';
 
-  // Seção Pigmento
-  var pigHtml = '<div class="cores-section">';
-  pigHtml += '<div class="cores-section-header"><h4><i class="fa-solid fa-fill-drip"></i> Pigmentação</h4>';
-  pigHtml += '<button class="btn-add-cor-small" onclick="openCriarCor(\'pigmento\')"><i class="fa-solid fa-plus"></i></button></div>';
+  // Seção Pigmentação
+  var pigHtml = '<div class="cores-section"><div class="cores-section-header"><h4><i class="fa-solid fa-palette"></i> Pigmentação</h4>';
+  pigHtml += '<button class="btn-add-cor-small" onclick="openCriarCor(\'pigmento\')"><i class="fa-solid fa-plus"></i> Nova pigmentação</button></div>';
   pigHtml += '<div class="cores-list">';
-
   if (cores.pigmento.length === 0) {
-    pigHtml += '<p class="cores-empty">Nenhuma cor de pigmentação cadastrada</p>';
+    pigHtml += '<p class="cores-empty">Nenhuma cor de pigmentação cadastrada.</p>';
   } else {
     cores.pigmento.forEach(function(c) {
-      pigHtml += '<div class="cor-crud-row">' +
-        '<span class="cor-crud-swatch" style="background:' + c.hex + '"></span>' +
+      pigHtml += '<div class="cor-crud-row"><div class="cor-crud-swatch" style="background:' + c.hex + '"></div>' +
         '<span class="cor-crud-nome">' + c.nome + '</span>' +
         '<span class="cor-crud-hex">' + c.hex + '</span>' +
         '<div class="cor-crud-actions">' +
@@ -1508,7 +1810,6 @@ function openCriarCor(tipo) {
 }
 
 function openEditarCor(corId) {
-  // Buscar cor em todas as listas
   var cor = null;
   var tipo = '';
   Object.keys(coresPorServico).forEach(function(sid) {
@@ -1575,55 +1876,6 @@ async function confirmarExcluirCor(corId) {
   await loadCores();
   renderListaCoresServico();
   renderListaServicos();
-}
-
-/* ===== MODAL: Vincular Serviços a Profissional ===== */
-function openModalVincularServicos(profNome) {
-  document.getElementById('vincular-prof-nome').textContent = profNome;
-  document.getElementById('vincular-prof-nome').dataset.prof = profNome;
-
-  var container = document.getElementById('vincular-servicos-list');
-  container.innerHTML = '';
-
-  var profSvcs = professionals[profNome] || [];
-  var profSvcIds = profSvcs.map(function(s) { return s.id; });
-
-  allServicos.forEach(function(s) {
-    var checked = profSvcIds.indexOf(s.id) >= 0 ? 'checked' : '';
-    var row = document.createElement('label');
-    row.className = 'vincular-servico-item';
-    row.innerHTML = '<input type="checkbox" value="' + s.id + '" ' + checked + '> ' + s.nome + ' <span class="svc-dur">(R$' + parseFloat(s.preco).toFixed(0) + ' · ' + s.duracao + 'min)</span>';
-    container.appendChild(row);
-  });
-
-  openModal('modal-vincular-servicos');
-}
-
-async function salvarVinculosServicos() {
-  var profNome = document.getElementById('vincular-prof-nome').dataset.prof;
-  var checkboxes = document.querySelectorAll('#vincular-servicos-list input[type="checkbox"]');
-
-  var profSvcs = professionals[profNome] || [];
-  var profSvcIds = profSvcs.map(function(s) { return s.id; });
-
-  var promises = [];
-  checkboxes.forEach(function(cb) {
-    var svcId = cb.value;
-    var wasLinked = profSvcIds.indexOf(svcId) >= 0;
-    var isLinked = cb.checked;
-
-    if (isLinked && !wasLinked) {
-      promises.push(vincularServicoProfissional(profNome, svcId));
-    } else if (!isLinked && wasLinked) {
-      promises.push(desvincularServicoProfissional(profNome, svcId));
-    }
-  });
-
-  await Promise.all(promises);
-  showToast('Vínculos atualizados!');
-  closeModal('modal-vincular-servicos');
-  await loadProfissionalServicos();
-  renderProfessionals();
 }
 
 /* ===== DASHBOARD ===== */
@@ -1838,3 +2090,300 @@ function showToast(msg) {
 /* ===== UTILS ===== */
 function pad(n) { return n < 10 ? '0' + n : '' + n; }
 function formatDateInput(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+
+
+/* ============================================================ */
+/* CONFIGURAÇÕES — Lógica completa                              */
+/* ============================================================ */
+
+var allUsuarios = [];
+var currentAuthUser = null;
+var currentUsuarioDb = null;
+
+async function initConfiguracoes() {
+  var sessionResp = await supabaseClient.auth.getSession();
+  if (sessionResp.data.session) {
+    currentAuthUser = sessionResp.data.session.user;
+  }
+
+  await loadCurrentUsuario();
+  renderMeuPerfil();
+
+  var tabUsuarios = document.getElementById('tab-usuarios');
+  if (tabUsuarios) {
+    tabUsuarios.style.display = isAdmin() ? '' : 'none';
+  }
+
+  if (isAdmin()) {
+    await loadUsuarios();
+    renderUsuarios();
+  }
+}
+
+async function loadCurrentUsuario() {
+  if (!currentAuthUser) return;
+  var resp = await supabaseClient
+    .from('usuarios')
+    .select('*')
+    .eq('id', currentAuthUser.id)
+    .maybeSingle();
+  if (resp.data) {
+    currentUsuarioDb = resp.data;
+  }
+}
+
+async function loadUsuarios() {
+  var resp = await supabaseClient.from('usuarios').select('*').order('created_at');
+  if (resp.error) { console.error('Erro ao carregar usuarios:', resp.error); return; }
+  allUsuarios = resp.data || [];
+}
+
+function renderMeuPerfil() {
+  if (currentUsuarioDb) {
+    document.getElementById('perfil-nome').value = currentUsuarioDb.nome || '';
+    document.getElementById('perfil-email').value = currentUsuarioDb.email || '';
+  } else if (currentAuthUser) {
+    document.getElementById('perfil-email').value = currentAuthUser.email || '';
+  }
+}
+
+function renderUsuarios() {
+  var tbody = document.getElementById('usuarios-tbody');
+  var cardsContainer = document.getElementById('usuarios-cards');
+  var countEl = document.getElementById('config-users-count');
+  tbody.innerHTML = '';
+  cardsContainer.innerHTML = '';
+
+  countEl.textContent = allUsuarios.length + ' de 3 usuários utilizados';
+
+  allUsuarios.forEach(function(u) {
+    var tr = document.createElement('tr');
+    var roleBadge = '<span class="role-badge ' + u.role + '">' + u.role + '</span>';
+    var actions = '<div class="servico-crud-actions">' +
+      '<button class="btn-icon" onclick="openEditarUsuario(\x27' + u.id + '\x27)"><i class="fa-solid fa-pen"></i></button>' +
+      '</div>';
+    tr.innerHTML = '<td>' + u.nome + '</td><td>' + u.email + '</td><td>' + roleBadge + '</td><td>' + actions + '</td>';
+    tbody.appendChild(tr);
+
+    var card = document.createElement('div');
+    card.className = 'user-card';
+    card.innerHTML = '<div class="user-card-header"><span class="user-card-name">' + u.nome + '</span>' + roleBadge + '</div>' +
+      '<div class="user-card-email">' + u.email + '</div>' +
+      '<div class="user-card-footer">' + actions + '</div>';
+    cardsContainer.appendChild(card);
+  });
+}
+
+/* ===== SALVAR PERFIL ===== */
+async function salvarPerfil() {
+  var nome = document.getElementById('perfil-nome').value.trim();
+
+  if (!nome) { showToast('Nome é obrigatório!'); return; }
+  if (!currentUsuarioDb) { showToast('Erro: usuário não encontrado no banco.'); return; }
+
+  var resp = await supabaseClient
+    .from('usuarios')
+    .update({ nome: nome })
+    .eq('id', currentUsuarioDb.id);
+
+  if (resp.error) {
+    console.error('Erro ao salvar perfil:', resp.error);
+    showToast('Erro ao salvar perfil!');
+    return;
+  }
+
+  currentUsuarioDb.nome = nome;
+  sessionStorage.setItem('userName', nome);
+  currentUser.nome = nome;
+
+  var userAvatarHtml = getAvatarHtml(nome, 'avatar--sidebar');
+  document.getElementById('user-info').innerHTML = userAvatarHtml + '<div class="user-details"><span class="user-name">' + nome + '</span><span class="user-role">' + currentUser.role + '</span></div>';
+
+  showToast('Perfil atualizado com sucesso!');
+}
+
+/* ===== ALTERAR SENHA ===== */
+async function salvarNovaSenha(e) {
+  e.preventDefault();
+  var senhaAtual = document.getElementById('senha-atual').value;
+  var senhaNova = document.getElementById('senha-nova').value;
+  var senhaConfirmar = document.getElementById('senha-confirmar').value;
+  var feedback = document.getElementById('senha-feedback');
+
+  if (senhaNova.length < 6) {
+    feedback.style.display = 'block';
+    feedback.style.color = '#e74c3c';
+    feedback.textContent = 'A nova senha deve ter pelo menos 6 caracteres.';
+    return;
+  }
+
+  if (senhaNova !== senhaConfirmar) {
+    feedback.style.display = 'block';
+    feedback.style.color = '#e74c3c';
+    feedback.textContent = 'As senhas não coincidem.';
+    return;
+  }
+
+  feedback.style.display = 'block';
+  feedback.style.color = 'var(--text-muted)';
+  feedback.textContent = 'Verificando...';
+
+  var email = currentAuthUser ? currentAuthUser.email : '';
+  var loginResp = await supabaseClient.auth.signInWithPassword({
+    email: email,
+    password: senhaAtual
+  });
+
+  if (loginResp.error) {
+    feedback.style.color = '#e74c3c';
+    feedback.textContent = 'Senha atual incorreta.';
+    return;
+  }
+
+  var updateResp = await supabaseClient.auth.updateUser({ password: senhaNova });
+
+  if (updateResp.error) {
+    feedback.style.color = '#e74c3c';
+    feedback.textContent = 'Erro ao atualizar senha: ' + updateResp.error.message;
+    return;
+  }
+
+  feedback.style.display = 'none';
+  closeModal('modal-alterar-senha');
+  document.getElementById('senha-atual').value = '';
+  document.getElementById('senha-nova').value = '';
+  document.getElementById('senha-confirmar').value = '';
+  showToast('Senha alterada com sucesso!');
+}
+
+/* ===== CRIAR USUÁRIO (ADMIN) ===== */
+function openModalCriarUsuario() {
+  if (allUsuarios.length >= 3) {
+    showToast('Limite de usuários atingido (3/3). Entre em contato para expandir.');
+    return;
+  }
+
+  document.getElementById('novo-user-nome').value = '';
+  document.getElementById('novo-user-email').value = '';
+  document.getElementById('novo-user-role').value = 'colaborador';
+  var feedback = document.getElementById('criar-user-feedback');
+  feedback.style.display = 'none';
+  openModal('modal-criar-usuario');
+}
+
+async function salvarNovoUsuario(e) {
+  e.preventDefault();
+  var nome = document.getElementById('novo-user-nome').value.trim();
+  var email = document.getElementById('novo-user-email').value.trim().toLowerCase();
+  var role = document.getElementById('novo-user-role').value;
+  var feedback = document.getElementById('criar-user-feedback');
+
+  if (!nome || !email) {
+    feedback.style.display = 'block';
+    feedback.style.color = '#e74c3c';
+    feedback.textContent = 'Preencha todos os campos obrigatórios.';
+    return;
+  }
+
+  var countResp = await supabaseClient.from('usuarios').select('id', { count: 'exact', head: true });
+  if (countResp.count >= 3) {
+    feedback.style.display = 'block';
+    feedback.style.color = '#e74c3c';
+    feedback.textContent = 'Limite de usuários atingido. Entre em contato para expandir.';
+    return;
+  }
+
+  feedback.style.display = 'block';
+  feedback.style.color = 'var(--text-muted)';
+  feedback.textContent = 'Criando usuário...';
+
+  var senhaProvisoria = 'Rhai@' + Math.random().toString(36).substring(2, 8);
+
+  var sessionBefore = await supabaseClient.auth.getSession();
+
+  var signUpResp = await supabaseClient.auth.signUp({
+    email: email,
+    password: senhaProvisoria
+  });
+
+  if (signUpResp.error) {
+    feedback.style.color = '#e74c3c';
+    feedback.textContent = 'Erro ao criar usuário: ' + signUpResp.error.message;
+    return;
+  }
+
+  var newAuthId = signUpResp.data.user ? signUpResp.data.user.id : null;
+
+  if (sessionBefore.data.session) {
+    await supabaseClient.auth.setSession({
+      access_token: sessionBefore.data.session.access_token,
+      refresh_token: sessionBefore.data.session.refresh_token
+    });
+  }
+
+  if (!newAuthId) {
+    feedback.style.color = '#e74c3c';
+    feedback.textContent = 'Erro: não foi possível obter o ID do novo usuário.';
+    return;
+  }
+
+  var insertResp = await supabaseClient.from('usuarios').insert([{
+    id: newAuthId,
+    nome: nome,
+    email: email,
+    role: role
+  }]);
+
+  if (insertResp.error) {
+    console.error('Erro ao inserir usuario:', insertResp.error);
+    feedback.style.color = '#e74c3c';
+    feedback.textContent = 'Erro ao salvar dados do usuário: ' + insertResp.error.message;
+    return;
+  }
+
+  feedback.style.display = 'none';
+  closeModal('modal-criar-usuario');
+  showToast('Usuário criado! Senha provisória: ' + senhaProvisoria);
+
+  alert('ATENÇÃO!\n\nUsuário criado com sucesso!\n\nEmail: ' + email + '\nSenha provisória: ' + senhaProvisoria + '\n\nAnote esta senha e entregue ao usuário. Ele deve alterá-la no primeiro acesso.');
+
+  await loadUsuarios();
+  renderUsuarios();
+}
+
+/* ===== EDITAR USUÁRIO (ADMIN) ===== */
+function openEditarUsuario(id) {
+  var user = allUsuarios.find(function(u) { return u.id === id; });
+  if (!user) return;
+
+  document.getElementById('edit-user-id').value = user.id;
+  document.getElementById('edit-user-nome').value = user.nome;
+
+  document.getElementById('edit-user-role').value = user.role;
+  openModal('modal-editar-usuario');
+}
+
+async function salvarEdicaoUsuario(e) {
+  e.preventDefault();
+  var id = document.getElementById('edit-user-id').value;
+  var nome = document.getElementById('edit-user-nome').value.trim();
+  var role = document.getElementById('edit-user-role').value;
+
+  if (!nome) { showToast('Nome é obrigatório!'); return; }
+
+  var resp = await supabaseClient
+    .from('usuarios')
+    .update({ nome: nome, role: role })
+    .eq('id', id);
+
+  if (resp.error) {
+    console.error('Erro ao editar usuario:', resp.error);
+    showToast('Erro ao atualizar usuário!');
+    return;
+  }
+
+  closeModal('modal-editar-usuario');
+  showToast('Usuário atualizado!');
+  await loadUsuarios();
+  renderUsuarios();
+}
