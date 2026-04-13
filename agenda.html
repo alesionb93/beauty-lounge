@@ -34,6 +34,7 @@
         <button class="nav-btn" data-page="clientes"><i class="fa-regular fa-address-book"></i> Clientes</button>
         <button class="nav-btn" data-page="profissionais"><i class="fa-solid fa-scissors"></i> Profissionais</button>
         <button class="nav-btn nav-admin-only" data-page="dashboard"><i class="fa-solid fa-chart-line"></i> Dashboard</button>
+        <button class="nav-btn" data-page="configuracoes"><i class="fa-solid fa-gear"></i> Configurações</button>
       </nav>
       <div class="sidebar-footer">
         <div class="user-info" id="user-info"></div>
@@ -96,6 +97,9 @@
         <div class="page-header">
           <h2>Profissionais & Serviços</h2>
           <div class="page-header-actions">
+            <button class="btn-novo admin-only" id="btn-add-profissional" onclick="openModalCriarProfissional()" style="display:none;">
+              <i class="fa-solid fa-user-plus"></i> Adicionar Profissional
+            </button>
             <button class="btn-filter admin-only" id="btn-gerenciar-servicos" onclick="openModalGerenciarServicos()" style="display:none;">
               <i class="fa-solid fa-gear"></i> Gerenciar Serviços
             </button>
@@ -172,6 +176,90 @@
                 <tbody id="dash-top-clientes"></tbody>
               </table>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======================== -->
+      <!-- CONFIGURAÇÕES -->
+      <!-- ======================== -->
+      <div class="page" id="page-configuracoes">
+        <div class="page-header">
+          <h2>Configurações</h2>
+        </div>
+
+        <div class="config-layout">
+          <!-- Menu lateral interno -->
+          <div class="config-sidebar">
+            <button class="config-tab active" data-config-tab="meu-perfil">
+              <i class="fa-regular fa-user"></i> Meu Perfil
+            </button>
+            <button class="config-tab admin-only-tab" data-config-tab="usuarios" id="tab-usuarios">
+              <i class="fa-solid fa-users"></i> Usuários
+            </button>
+          </div>
+
+          <!-- Conteúdo das abas -->
+          <div class="config-content">
+
+            <!-- ABA: Meu Perfil -->
+            <div class="config-panel active" id="config-meu-perfil">
+              <div class="config-section">
+                <div class="config-section-left">
+                  <h3>Informações pessoais</h3>
+                  <p class="config-help-text">As informações pessoais são necessárias para que o proprietário deste usuário seja facilmente identificado.</p>
+                </div>
+                <div class="config-section-right">
+                  <div class="form-group">
+                    <label>Nome completo</label>
+                    <input type="text" id="perfil-nome" placeholder="Seu nome">
+                  </div>
+                  <div class="form-group">
+                    <label>E-mail</label>
+                    <input type="email" id="perfil-email" placeholder="seu@email.com" readonly>
+                  </div>
+
+                </div>
+              </div>
+
+
+
+              <div class="config-actions">
+                <button class="btn-alterar-senha" onclick="openModal('modal-alterar-senha')">
+                  <i class="fa-solid fa-pen"></i> ALTERAR SENHA
+                </button>
+                <button class="btn-submit btn-salvar-perfil" onclick="salvarPerfil()">
+                  SALVAR ALTERAÇÕES <i class="fa-solid fa-check"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- ABA: Usuários (ADMIN ONLY) -->
+            <div class="config-panel" id="config-usuarios">
+              <div class="config-section-header">
+                <h3>Usuários do Sistema</h3>
+                <button class="btn-novo" id="btn-novo-usuario" onclick="openModalCriarUsuario()">
+                  <i class="fa-solid fa-plus"></i> Novo Usuário
+                </button>
+              </div>
+              <div class="config-users-count" id="config-users-count"></div>
+              <div class="config-users-table-wrapper">
+                <table class="config-users-table">
+                  <thead>
+                    <tr>
+                      <th>Nome</th>
+                      <th>Email</th>
+                      <th>Permissão</th>
+                      <th>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody id="usuarios-tbody"></tbody>
+                </table>
+              </div>
+              <!-- Mobile: cards -->
+              <div class="config-users-cards" id="usuarios-cards"></div>
+            </div>
+
           </div>
         </div>
       </div>
@@ -388,19 +476,104 @@
     </div>
   </div>
 
-  <!-- MODAL: Vincular Serviços a Profissional -->
+  <!-- MODAL: Vincular Serviços a Profissional (EDITAR PROFISSIONAL) -->
   <div class="modal-overlay" id="modal-vincular-servicos">
     <div class="modal">
       <div class="modal-header">
-        <h3>Serviços de <span id="vincular-prof-nome"></span></h3>
+        <h3>Editar Profissional</h3>
         <button class="modal-close" onclick="closeModal('modal-vincular-servicos')">&times;</button>
       </div>
       <div class="modal-body">
+        <!-- Seção: dados do profissional -->
+        <div class="edit-prof-section">
+          <div class="edit-prof-foto-area">
+            <div class="avatar avatar--lg" id="edit-prof-avatar-preview">?</div>
+            <div class="edit-prof-foto-actions">
+              <label class="btn-upload-foto" id="edit-prof-foto-label">
+                <i class="fa-solid fa-camera"></i> Alterar foto
+                <input type="file" accept="image/*" id="edit-prof-foto-input" onchange="onEditProfFotoChange(this)" style="display:none;">
+              </label>
+              <button type="button" class="btn-remover-foto" onclick="removerEditProfFoto()">Remover</button>
+              <p class="foto-recomendacao">Recomendado: 96×96px, formato quadrado (JPG ou PNG)</p>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Nome do Profissional</label>
+            <input type="text" id="edit-prof-nome" placeholder="Nome">
+          </div>
+          <input type="hidden" id="edit-prof-id">
+          <input type="hidden" id="edit-prof-old-nome">
+        </div>
+
+        <hr style="border-color: var(--border); margin: 20px 0;">
+
+        <!-- Seção: serviços vinculados -->
+        <h4 style="color: var(--gold); font-family: var(--font-display); margin-bottom: 12px;">Serviços vinculados</h4>
         <div id="vincular-servicos-list" class="vincular-servicos-list"></div>
       </div>
       <div class="modal-actions">
+        <button class="btn-delete" onclick="confirmarExcluirProfissional()" style="flex:0 0 auto; padding: 12px 16px;">
+          <i class="fa-solid fa-trash"></i>
+        </button>
         <button class="btn-cancel" onclick="closeModal('modal-vincular-servicos')">Cancelar</button>
-        <button class="btn-submit" onclick="salvarVinculosServicos()">Salvar Vínculos</button>
+        <button class="btn-submit" onclick="salvarEdicaoProfissional()">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Criar Profissional -->
+  <div class="modal-overlay" id="modal-criar-profissional">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Adicionar Profissional</h3>
+        <button class="modal-close" onclick="closeModal('modal-criar-profissional')">&times;</button>
+      </div>
+      <form onsubmit="salvarNovoProfissional(event)">
+        <div class="form-group">
+          <label>Nome do Profissional</label>
+          <input type="text" id="novo-prof-nome" required placeholder="Ex: Maria Silva">
+        </div>
+
+        <div class="form-group">
+          <label>Foto</label>
+          <div class="criar-prof-foto-area">
+            <div class="avatar avatar--lg" id="novo-prof-avatar-preview">?</div>
+            <div class="criar-prof-foto-actions">
+              <label class="btn-upload-foto">
+                <i class="fa-solid fa-camera"></i> Escolher foto
+                <input type="file" accept="image/*" id="novo-prof-foto-input" onchange="onNovoProfFotoChange(this)" style="display:none;">
+              </label>
+              <p class="foto-recomendacao">Recomendado: 96×96px, formato quadrado (JPG ou PNG)</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Serviços</label>
+          <p class="config-help-text" style="margin-bottom:8px;">Selecione os serviços que este profissional realiza.</p>
+          <div id="novo-prof-servicos-list" class="vincular-servicos-list"></div>
+        </div>
+
+        <div id="criar-prof-feedback" style="display:none; margin-bottom:12px; font-size:0.9rem;"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" onclick="closeModal('modal-criar-profissional')">Cancelar</button>
+          <button type="submit" class="btn-submit">Criar Profissional</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Confirmar exclusão de profissional -->
+  <div class="modal-overlay" id="modal-confirmar-excluir-prof">
+    <div class="modal modal-small">
+      <div class="modal-header">
+        <h3>Excluir Profissional</h3>
+        <button class="modal-close" onclick="closeModal('modal-confirmar-excluir-prof')">&times;</button>
+      </div>
+      <p style="color:var(--text-muted); margin-bottom:20px;">Tem certeza que deseja excluir este profissional? Todos os vínculos de serviços serão removidos.</p>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal('modal-confirmar-excluir-prof')">Não</button>
+        <button class="btn-delete" onclick="executarExcluirProfissional()">Sim, Excluir</button>
       </div>
     </div>
   </div>
@@ -441,6 +614,114 @@
         </div>
         <div class="modal-actions">
           <button type="button" class="btn-cancel" onclick="closeModal('modal-crud-cor')">Cancelar</button>
+          <button type="submit" class="btn-submit">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ======================== -->
+  <!-- MODAIS DE CONFIGURAÇÕES -->
+  <!-- ======================== -->
+
+  <!-- MODAL: Alterar Senha -->
+  <div class="modal-overlay" id="modal-alterar-senha">
+    <div class="modal modal-small">
+      <div class="modal-header">
+        <h3>Alterar Senha</h3>
+        <button class="modal-close" onclick="closeModal('modal-alterar-senha')">&times;</button>
+      </div>
+      <form onsubmit="salvarNovaSenha(event)">
+        <div class="form-group">
+          <label>Senha atual</label>
+          <input type="password" id="senha-atual" required placeholder="Digite sua senha atual">
+        </div>
+        <div class="form-group">
+          <label>Nova senha</label>
+          <input type="password" id="senha-nova" required placeholder="Mínimo 6 caracteres" minlength="6">
+        </div>
+        <div class="form-group">
+          <label>Confirmar nova senha</label>
+          <input type="password" id="senha-confirmar" required placeholder="Repita a nova senha" minlength="6">
+        </div>
+        <div id="senha-feedback" style="display:none; margin-bottom:12px; font-size:0.9rem;"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" onclick="closeModal('modal-alterar-senha')">Cancelar</button>
+          <button type="submit" class="btn-submit">Salvar Nova Senha</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Criar Usuário -->
+  <div class="modal-overlay" id="modal-criar-usuario">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Criar Novo Usuário</h3>
+        <button class="modal-close" onclick="closeModal('modal-criar-usuario')">&times;</button>
+      </div>
+      <form onsubmit="salvarNovoUsuario(event)">
+        <!-- Seção: Informações de acesso -->
+        <div class="config-form-section">
+          <h4>Informações de acesso</h4>
+          <p class="config-help-text">Informe o login e o grupo de permissões no qual pertence o usuário.</p>
+
+          <div class="form-group">
+            <label>Grupo de acesso</label>
+            <select id="novo-user-role" required>
+              <option value="colaborador">Colaborador</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Seção: Informações pessoais -->
+        <div class="config-form-section">
+          <h4>Informações pessoais</h4>
+          <p class="config-help-text">As informações pessoais são necessárias para identificação do usuário.</p>
+          <div class="form-group">
+            <label>Nome completo (obrigatório)</label>
+            <input type="text" id="novo-user-nome" required placeholder="Nome completo">
+          </div>
+          <div class="form-group">
+            <label>E-mail (obrigatório)</label>
+            <input type="email" id="novo-user-email" required placeholder="email@exemplo.com">
+          </div>
+
+        </div>
+
+        <div id="criar-user-feedback" style="display:none; margin-bottom:12px; font-size:0.9rem;"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" onclick="closeModal('modal-criar-usuario')">Cancelar</button>
+          <button type="submit" class="btn-submit">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Editar Usuário -->
+  <div class="modal-overlay" id="modal-editar-usuario">
+    <div class="modal modal-small">
+      <div class="modal-header">
+        <h3>Editar Usuário</h3>
+        <button class="modal-close" onclick="closeModal('modal-editar-usuario')">&times;</button>
+      </div>
+      <form onsubmit="salvarEdicaoUsuario(event)">
+        <input type="hidden" id="edit-user-id">
+        <div class="form-group">
+          <label>Nome</label>
+          <input type="text" id="edit-user-nome" required>
+        </div>
+
+        <div class="form-group">
+          <label>Permissão</label>
+          <select id="edit-user-role" required>
+            <option value="colaborador">Colaborador</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" onclick="closeModal('modal-editar-usuario')">Cancelar</button>
           <button type="submit" class="btn-submit">Salvar</button>
         </div>
       </form>
