@@ -167,14 +167,7 @@ body {
 .filter-chip.active { background: var(--gold); color: #0a0a0a; border-color: var(--gold); font-weight: 600; }
 .filter-chip:hover { border-color: var(--gold); }
 
-.filter-chip-avatar {
-  width: 24px; height: 24px; border-radius: 50%; object-fit: cover;
-  background: linear-gradient(135deg, var(--gold), var(--gold-light));
-  display: flex; align-items: center; justify-content: center;
-  font-size: 0.65rem; font-weight: 700; color: #0a0a0a; flex-shrink: 0;
-  overflow: hidden;
-}
-.filter-chip-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+/* .filter-chip-avatar now uses .avatar .avatar--chip */
 
 /* ===== AGENDAMENTOS ===== */
 .agenda-grid { display: flex; gap: 24px; }
@@ -273,13 +266,7 @@ body {
   padding: 8px 0; display: flex; align-items: center; justify-content: center; gap: 8px;
 }
 
-.multi-col-avatar {
-  width: 28px; height: 28px; border-radius: 50%; overflow: hidden;
-  background: linear-gradient(135deg, var(--gold), var(--gold-light));
-  display: flex; align-items: center; justify-content: center;
-  font-size: 0.7rem; font-weight: 700; color: #0a0a0a; flex-shrink: 0;
-}
-.multi-col-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+/* .multi-col-avatar now uses .avatar .avatar--sm */
 
 .multi-agenda-body { position: relative; }
 
@@ -384,6 +371,90 @@ body {
 .clients-table tr:hover td { background: var(--bg-card-hover); }
 .clients-table .birthday-icon { color: var(--gold); margin-left: 6px; }
 
+
+/* ===== AVATAR SYSTEM (quality-first, reusable) ===== */
+.avatar {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, var(--gold), var(--gold-light));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #0a0a0a;
+  border: 2px solid var(--gold);
+  box-shadow: 0 2px 10px rgba(200,164,90,0.22), 0 0 0 1px rgba(200,164,90,0.08);
+  vertical-align: middle;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  min-width: 100%;
+  min-height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  border-radius: 50%;
+  transform: none;
+  filter: none;
+}
+
+/* Size variants */
+.avatar--sm {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  font-size: 0.7rem;
+  border-width: 1px;
+}
+
+.avatar--md {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  font-size: 1rem;
+  border-width: 2px;
+}
+
+.avatar--lg {
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  min-height: 56px;
+  font-size: 1.4rem;
+  border-width: 2px;
+}
+
+/* Sidebar user avatar */
+.avatar--sidebar {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  font-size: 0.9rem;
+  border-width: 1.5px;
+}
+
+/* Filter chip avatar (inside chips) */
+.avatar--chip {
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  min-height: 26px;
+  font-size: 0.65rem;
+  border-width: 1px;
+  box-shadow: none;
+}
+
 /* ===== PROFISSIONAIS ===== */
 .professionals-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px;
@@ -395,13 +466,7 @@ body {
 
 .professional-card .card-header { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
 
-.professional-card .avatar {
-  width: 48px; height: 48px; border-radius: 50%;
-  background: linear-gradient(135deg, var(--gold), var(--gold-light));
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.2rem; font-weight: 700; color: #0a0a0a; overflow: hidden; flex-shrink: 0;
-}
-.professional-card .avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+/* .professional-card .avatar now uses the unified .avatar system */
 
 .professional-card .name { font-size: 1.15rem; font-weight: 600; }
 .professional-card .services-list { list-style: none; }
@@ -659,6 +724,32 @@ body {
 .sidebar .close-sidebar {
   display: none; position: absolute; top: 16px; right: 16px; background: none;
   border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer;
+}
+
+
+/* ===== SIDEBAR USER INFO WITH AVATAR ===== */
+.sidebar-footer .user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sidebar-footer .user-info .user-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar-footer .user-info .user-name {
+  color: var(--gold);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.sidebar-footer .user-info .user-role {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-transform: capitalize;
 }
 
 /* ===== ANIMATIONS ===== */
