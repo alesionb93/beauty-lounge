@@ -45,10 +45,6 @@ var pigmentOptions = [
   { code: '0-99', hex: '#141728' }
 ];
 
-/* ===== FIX #7: Avatar URLs para profissionais =====
-   Substitua as URLs abaixo pelas fotos reais de cada profissional.
-   Exemplo: 'Rhai': 'https://seusite.com/fotos/rhai.jpg'
-*/
 var professionalAvatars = {
   'Rhai': 'rhai.jpg',
   'Rubia': 'rubia.jpg',
@@ -59,10 +55,19 @@ var clients = [];
 var appointments = [];
 var editingAppointmentId = null;
 var pendingClienteFromIdentificacao = null;
-var currentUser = { nome: '', role: '' };
-var activeFilters = [];
 var pendingBaseCallback = null;
 var pendingPigmentoCallback = null;
+
+// ===== NOVO: currentUser com dados do Supabase =====
+var currentUser = {
+  id: '',
+  nome: '',
+  email: '',
+  role: '',       // 'master_admin', 'admin', 'colaborador'
+  profissional: '' // nome do profissional vinculado
+};
+
+var activeFilters = [];
 
 var MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
@@ -71,12 +76,66 @@ var currentMonth = today.getMonth();
 var currentYear = today.getFullYear();
 var selectedDay = today.getDate();
 
-/* ===== Professional colors for chart (FIX #4) ===== */
 var profColors = {
   'Rhai': '#5bc0de',
   'Rubia': '#9b59b6',
   'Pablo': '#e91e90'
 };
+
+/* ===== AUTH HELPERS ===== */
+
+// Verificar se o usuário tem permissão de admin ou master
+function hasPermission(minRole) {
+  var roleHierarchy = { 'master_admin': 0, 'admin': 1, 'colaborador': 2 };
+  var userLevel = roleHierarchy[currentUser.role];
+  var requiredLevel = roleHierarchy[minRole];
+  if (userLevel === undefined || requiredLevel === undefined) return false;
+  return userLevel <= requiredLevel;
+}
+
+function isAdmin() {
+  return hasPermission('admin');
+}
+
+function isMasterAdmin() {
+  return hasPermission('master_admin');
+}
+
+// Buscar dados do usuário na tabela usuarios
+async function fetchCurrentUser() {
+  var { data: { session } } = await supabaseClient.auth.getSession();
+  if (!session) {
+    window.location.href = 'index.html';
+    return false;
+  }
+
+  var { data: userData, error } = await supabaseClient
+    .from('usuarios')
+    .select('*')
+    .eq('id', session.user.id)
+    .single();
+
+  if (error || !userData) {
+    console.error('Erro ao buscar dados do usuário:', error);
+    await supabaseClient.auth.signOut();
+    window.location.href = 'index.html';
+    return false;
+  }
+
+  currentUser.id = userData.id;
+  currentUser.nome = userData.nome;
+  currentUser.email = userData.email;
+  currentUser.role = userData.role;
+  currentUser.profissional = userData.profissional || '';
+
+  return true;
+}
+
+// Logout
+async function logoutUser() {
+  await supabaseClient.auth.signOut();
+  window.location.href = 'index.html';
+}
 
 /* ===== SUPABASE HELPERS ===== */
 async function loadClients() {
@@ -163,43 +222,36 @@ async function insertClient(clientObj) {
   return resp.data[0];
 }
 
-/* ===== FIX #6: REMOVED cleanupOldAppointments ===== */
-
 /* ===== INIT ===== */
 document.addEventListener('DOMContentLoaded', async function() {
-  if (!sessionStorage.getItem('logged')) {
-    window.location.href = 'index.html';
-    return;
-  }
-
-  currentUser.nome = sessionStorage.getItem('userName') || '';
-  currentUser.role = sessionStorage.getItem('userRole') || 'colaborador';
+  // ===== NOVO: Verificar sessão via Supabase Auth =====
+  var loggedIn = await fetchCurrentUser();
+  if (!loggedIn) return;
 
   // Sidebar user info with avatar
-  var userAvatarHtml = getAvatarHtml(currentUser.nome, 'avatar--sidebar');
+  var userAvatarHtml = getAvatarHtml(currentUser.profissional || currentUser.nome, 'avatar--sidebar');
   document.getElementById('user-info').innerHTML = userAvatarHtml + '<div class="user-details"><span class="user-name">' + currentUser.nome + '</span><span class="user-role">' + currentUser.role + '</span></div>';
 
-  if (currentUser.role !== 'admin') {
-    document.querySelectorAll('.admin-only, .nav-admin-only').forEach(function(el) {
-      el.style.display = 'none';
-    });
-  }
+  // ===== NOVO: Controle de acesso por role (via JS, não apenas CSS) =====
+  applyRoleAccess();
 
-  if (currentUser.role === 'admin') {
-    activeFilters = [currentUser.nome];
+  // Definir filtros iniciais baseado no role
+  if (isAdmin()) {
+    activeFilters = Object.keys(professionals);
   } else {
-    activeFilters = [currentUser.nome];
+    // Colaborador: filtrar apenas seus agendamentos
+    activeFilters = [currentUser.profissional];
   }
 
   await loadClients();
   await loadAppointments();
-  /* FIX #6: Removed cleanupOldAppointments() call */
 
   // Navigation
   document.querySelectorAll('.nav-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var page = this.dataset.page;
-      if (page === 'dashboard' && currentUser.role !== 'admin') return;
+      // Controle de acesso por role
+      if (page === 'dashboard' && !isAdmin()) return;
       switchPage(page);
     });
   });
@@ -209,11 +261,8 @@ document.addEventListener('DOMContentLoaded', async function() {
   document.getElementById('sidebar-overlay').addEventListener('click', closeSidebar);
   document.getElementById('close-sidebar').addEventListener('click', closeSidebar);
 
-  // Logout
-  document.getElementById('btn-sair').addEventListener('click', function() {
-    sessionStorage.clear();
-    window.location.href = 'index.html';
-  });
+  // ===== NOVO: Logout via Supabase Auth =====
+  document.getElementById('btn-sair').addEventListener('click', logoutUser);
 
   // Calendar nav
   document.getElementById('prev-month').addEventListener('click', function() {
@@ -239,7 +288,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     openModal('modal-cliente');
   });
 
-  // Filter button (admin)
+  // Filter button (admin only)
   var filterBtn = document.getElementById('btn-filtrar-agendas');
   if (filterBtn) {
     filterBtn.addEventListener('click', toggleFilterBar);
@@ -260,7 +309,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     baseQtdSelect.appendChild(opt);
   }
 
-  // FIX #3: Populate pigmento qty select in GRAMS (5g to 120g, step 5)
   var pigQtdSelect = document.getElementById('pigmento-qtd-select');
   for (var pg = 1; pg <= 10; pg += 1) {
     var opt2 = document.createElement('option');
@@ -268,8 +316,33 @@ document.addEventListener('DOMContentLoaded', async function() {
     pigQtdSelect.appendChild(opt2);
   }
 
+  // Listener para mudanças de sessão
+  supabaseClient.auth.onAuthStateChange(function(event, session) {
+    if (event === 'SIGNED_OUT') {
+      window.location.href = 'index.html';
+    }
+  });
+
   switchPage('agendamentos');
 });
+
+/* ===== NOVO: Aplicar controle de acesso por role ===== */
+function applyRoleAccess() {
+  // Admin-only: visível para admin e master_admin
+  document.querySelectorAll('.admin-only, .nav-admin-only').forEach(function(el) {
+    if (!isAdmin()) {
+      el.remove(); // Remove do DOM, não apenas esconde via CSS
+    }
+  });
+
+  // Master-only: visível apenas para master_admin
+  document.querySelectorAll('.master-only').forEach(function(el) {
+    if (!isMasterAdmin()) {
+      el.remove();
+    }
+  });
+}
+
 
 /* ===== PHONE MASK ===== */
 function maskTelefone(input) {
@@ -326,7 +399,7 @@ async function consultarCliente() {
   }
 }
 
-/* ===== NAVIGATION (FIX #1) ===== */
+/* ===== NAVIGATION ===== */
 function switchPage(page) {
   document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
   document.querySelectorAll('.nav-btn').forEach(function(b) { b.classList.remove('active'); });
@@ -356,7 +429,7 @@ function closeSidebar() {
   document.body.style.overflow = '';
 }
 
-/* ===== FILTER BAR (ADMIN) - FIX #7: avatars ===== */
+/* ===== FILTER BAR (ADMIN) ===== */
 function toggleFilterBar() {
   var bar = document.getElementById('filter-bar');
   if (bar.style.display === 'none') {
@@ -373,7 +446,6 @@ function renderFilterChips() {
   Object.keys(professionals).forEach(function(name) {
     var chip = document.createElement('button');
     chip.className = 'filter-chip' + (activeFilters.indexOf(name) >= 0 ? ' active' : '');
-    // Avatar
     var avatarHtml = getAvatarHtml(name, 'avatar--chip');
     chip.innerHTML = avatarHtml + '<span>' + name + '</span>';
     chip.onclick = function() {
@@ -391,7 +463,7 @@ function renderFilterChips() {
   });
 }
 
-/* ===== FIX #7: Avatar helper (unified .avatar system) ===== */
+/* ===== Avatar helper ===== */
 function getAvatarHtml(name, sizeClass) {
   var url = professionalAvatars[name];
   var classes = 'avatar' + (sizeClass ? ' ' + sizeClass : '');
@@ -491,7 +563,7 @@ function renderCalendar() {
   }
 }
 
-/* ===== TIMELINE DAY VIEW (Google Calendar style) ===== */
+/* ===== TIMELINE DAY VIEW ===== */
 function renderDayDetail() {
   var date = new Date(currentYear, currentMonth, selectedDay);
   var weekday = date.toLocaleDateString('pt-BR', { weekday: 'long' });
@@ -510,7 +582,7 @@ function renderDayDetail() {
     return;
   }
 
-  var showMultiAgenda = currentUser.role === 'admin' && activeFilters.length > 1;
+  var showMultiAgenda = isAdmin() && activeFilters.length > 1;
 
   if (showMultiAgenda) {
     renderMultiAgenda(container, dayAppointments, dateStr);
@@ -543,7 +615,6 @@ function renderMultiAgenda(container, dayAppointments, dateStr) {
   container.className = 'multi-agenda-container';
   var html = '<div class="multi-agenda">';
 
-  // FIX #7: Header row with avatars
   html += '<div class="multi-agenda-header"><div class="timeline-hour-header"></div>';
   activeFilters.forEach(function(name) {
     var avatarHtml = getAvatarHtml(name, 'avatar--sm');
@@ -775,7 +846,7 @@ function onSvcServicoChange(selectEl) {
   }
 }
 
-/* ===== BASE (Rubia + Coloração) - FIX #2: Grid format ===== */
+/* ===== BASE (Rubia + Coloração) ===== */
 function adicionarCampoBase(btn) {
   var container = btn ? btn.closest('.form-group').querySelector('.bases-container') : null;
   if (!container) return;
@@ -809,7 +880,6 @@ function adicionarCampoBaseComValor(container, corVal, qtdVal) {
   display.appendChild(qtdBadge);
   display.appendChild(removeBtn);
 
-  // FIX #2: Use grid dropdown for base (same as pigmentation)
   var dropdown = document.createElement('div');
   dropdown.className = 'base-grid-dropdown';
   colorOptions.forEach(function(opt) {
@@ -872,7 +942,7 @@ function confirmarBaseQtd() {
   closeModal('modal-base-qtd');
 }
 
-/* ===== PIGMENTAÇÃO (Rubia + Coloração) - FIX #3: qty in grams ===== */
+/* ===== PIGMENTAÇÃO ===== */
 function adicionarPigmentacao(btn) {
   var container = btn.closest('.form-group').querySelector('.pig-container');
   adicionarPigmentacaoComValor(container, '', '');
@@ -963,7 +1033,7 @@ function confirmarPigmentoQtd() {
   closeModal('modal-pigmento-qtd');
 }
 
-/* ===== COR SIMPLES (não-Rubia + Coloração) ===== */
+/* ===== COR SIMPLES ===== */
 function adicionarCorSimples(btn) {
   var container = btn.closest('.form-group').querySelector('.cores-container');
   if (container.children.length >= 5) return;
@@ -1038,7 +1108,6 @@ function adicionarCorSimplesComValor(container, valor) {
   container.appendChild(wrapper);
 }
 
-// Close all dropdowns on outside click
 document.addEventListener('click', function() {
   document.querySelectorAll('.cor-dropdown.open, .pig-dropdown.open, .base-grid-dropdown.open').forEach(function(d) { d.classList.remove('open'); });
 });
@@ -1285,7 +1354,7 @@ async function openHistorico(cliente) {
   conteudo.innerHTML = html;
 }
 
-/* ===== PROFESSIONALS PAGE - FIX #7: avatars ===== */
+/* ===== PROFESSIONALS PAGE ===== */
 function renderProfessionals() {
   var container = document.getElementById('professionals-grid');
   container.innerHTML = '';
@@ -1304,7 +1373,7 @@ function renderProfessionals() {
   });
 }
 
-/* ===== DASHBOARD (FIX #4 & #5) ===== */
+/* ===== DASHBOARD ===== */
 function initDashboard() {
   var hoje = new Date();
   var inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
@@ -1336,7 +1405,6 @@ async function loadDashboard() {
   var servicoCount = {};
   var clienteCount = {};
 
-  // FIX #4: Per-professional, per-hour faturamento
   var profHoraFat = {};
   Object.keys(professionals).forEach(function(name) { profHoraFat[name] = {}; });
 
@@ -1355,7 +1423,6 @@ async function loadDashboard() {
       profData[s.profissional].servicos++;
       profData[s.profissional].faturamento += preco;
 
-      // Per-prof per-hour faturamento
       if (profHoraFat[s.profissional]) {
         if (!profHoraFat[s.profissional][hora]) profHoraFat[s.profissional][hora] = 0;
         profHoraFat[s.profissional][hora] += preco;
@@ -1377,16 +1444,13 @@ async function loadDashboard() {
 
   var ticketMedio = totalAg > 0 ? totalFaturamento / totalAg : 0;
 
-  // FIX #5: Format currency consistently
   document.getElementById('dash-total-ag').textContent = totalAg;
   document.getElementById('dash-ticket').textContent = formatCurrency(ticketMedio);
   document.getElementById('dash-total-servicos').textContent = totalServicos;
   document.getElementById('dash-faturamento').textContent = formatCurrency(totalFaturamento);
 
-  // FIX #4: Render line chart (SVG) per professional
   renderLineChart(profHoraFat);
 
-  // Prof table
   var profTbody = document.getElementById('dash-prof-tbody');
   profTbody.innerHTML = '';
   Object.keys(profData).forEach(function(name) {
@@ -1394,7 +1458,6 @@ async function loadDashboard() {
     profTbody.innerHTML += '<tr><td>' + name + '</td><td>' + d.atendimentos + '</td><td>' + d.servicos + '</td><td>' + formatCurrency(d.faturamento) + '</td></tr>';
   });
 
-  // Top 10 serviços
   var svcArr = Object.keys(servicoCount).map(function(k) { return { nome: k, qtd: servicoCount[k].qtd, valor: servicoCount[k].valor }; });
   svcArr.sort(function(a, b) { return b.qtd - a.qtd; });
   var topSvc = document.getElementById('dash-top-servicos');
@@ -1403,7 +1466,6 @@ async function loadDashboard() {
     topSvc.innerHTML += '<tr><td>' + s.nome + '</td><td>' + s.qtd + '</td><td>' + formatCurrency(s.valor) + '</td></tr>';
   });
 
-  // Top 10 clientes
   var cliArr = Object.keys(clienteCount).map(function(k) { return { nome: k, qtd: clienteCount[k] }; });
   cliArr.sort(function(a, b) { return b.qtd - a.qtd; });
   var topCli = document.getElementById('dash-top-clientes');
@@ -1413,11 +1475,10 @@ async function loadDashboard() {
   });
 }
 
-/* ===== FIX #4: SVG Line Chart ===== */
+/* ===== SVG Line Chart ===== */
 function renderLineChart(profHoraFat) {
   var chartDiv = document.getElementById('dash-chart-horarios');
 
-  // Collect all hours
   var allHours = [];
   Object.keys(profHoraFat).forEach(function(prof) {
     Object.keys(profHoraFat[prof]).forEach(function(h) {
@@ -1431,7 +1492,6 @@ function renderLineChart(profHoraFat) {
     return;
   }
 
-  // Find max value for Y axis
   var maxVal = 0;
   Object.keys(profHoraFat).forEach(function(prof) {
     allHours.forEach(function(h) {
@@ -1441,7 +1501,6 @@ function renderLineChart(profHoraFat) {
   });
   if (maxVal === 0) maxVal = 100;
 
-  // Chart dimensions
   var width = 800;
   var height = 280;
   var padLeft = 80;
@@ -1451,7 +1510,6 @@ function renderLineChart(profHoraFat) {
   var chartW = width - padLeft - padRight;
   var chartH = height - padTop - padBottom;
 
-  // Legend
   var legendHtml = '<div class="dash-chart-legend">';
   Object.keys(professionals).forEach(function(name) {
     var color = profColors[name] || '#888';
@@ -1459,10 +1517,8 @@ function renderLineChart(profHoraFat) {
   });
   legendHtml += '</div>';
 
-  // SVG
   var svg = '<svg class="dash-chart-svg" viewBox="0 0 ' + width + ' ' + height + '" preserveAspectRatio="xMidYMid meet">';
 
-  // Y axis gridlines & labels
   var ySteps = 5;
   for (var yi = 0; yi <= ySteps; yi++) {
     var yVal = (maxVal / ySteps) * yi;
@@ -1471,13 +1527,11 @@ function renderLineChart(profHoraFat) {
     svg += '<text x="' + (padLeft - 8) + '" y="' + (yPos + 4) + '" text-anchor="end" fill="#888" font-size="11" font-family="Inter, sans-serif">' + formatCurrencyShort(yVal) + '</text>';
   }
 
-  // X axis labels
   allHours.forEach(function(h, i) {
     var x = padLeft + (i / (allHours.length - 1 || 1)) * chartW;
     svg += '<text x="' + x + '" y="' + (height - 8) + '" text-anchor="middle" fill="#888" font-size="11" font-family="Inter, sans-serif">' + h + 'H</text>';
   });
 
-  // Lines per professional
   Object.keys(professionals).forEach(function(name) {
     var color = profColors[name] || '#888';
     var points = [];
@@ -1488,11 +1542,9 @@ function renderLineChart(profHoraFat) {
       points.push({ x: x, y: y, val: val });
     });
 
-    // Draw line
     if (points.length > 1) {
       var pathD = 'M' + points[0].x + ',' + points[0].y;
       for (var pi = 1; pi < points.length; pi++) {
-        // Smooth curve
         var prev = points[pi - 1];
         var curr = points[pi];
         var cpx = (prev.x + curr.x) / 2;
@@ -1501,7 +1553,6 @@ function renderLineChart(profHoraFat) {
       svg += '<path d="' + pathD + '" fill="none" stroke="' + color + '" stroke-width="2.5" stroke-linecap="round"/>';
     }
 
-    // Draw circles
     points.forEach(function(p) {
       if (p.val > 0) {
         svg += '<circle cx="' + p.x + '" cy="' + p.y + '" r="5" fill="' + color + '" stroke="#141414" stroke-width="2"/>';
@@ -1513,7 +1564,7 @@ function renderLineChart(profHoraFat) {
   chartDiv.innerHTML = legendHtml + '<div class="dash-chart-canvas">' + svg + '</div>';
 }
 
-/* ===== FIX #5: Currency formatting ===== */
+/* ===== Currency formatting ===== */
 function formatCurrency(val) {
   return 'R$ ' + val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
