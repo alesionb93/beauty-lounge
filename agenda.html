@@ -33,8 +33,10 @@
         <button class="nav-btn active" data-page="agendamentos"><i class="fa-regular fa-calendar"></i> Agendamentos</button>
         <button class="nav-btn" data-page="clientes"><i class="fa-regular fa-address-book"></i> Clientes</button>
         <button class="nav-btn" data-page="profissionais"><i class="fa-solid fa-scissors"></i> Profissionais</button>
+        <button class="nav-btn nav-admin-only" data-page="dashboard"><i class="fa-solid fa-chart-line"></i> Dashboard</button>
       </nav>
       <div class="sidebar-footer">
+        <div class="user-info" id="user-info"></div>
         <button class="btn-sair" id="btn-sair"><i class="fa-solid fa-right-from-bracket"></i> Sair</button>
       </div>
     </aside>
@@ -46,7 +48,14 @@
       <div class="page active" id="page-agendamentos">
         <div class="page-header">
           <h2>Agendamentos</h2>
-          <button class="btn-novo" id="btn-novo-agendamento"><i class="fa-solid fa-plus"></i> Novo</button>
+          <div class="page-header-actions">
+            <button class="btn-filter admin-only" id="btn-filtrar-agendas" title="Filtrar agendas"><i class="fa-solid fa-filter"></i> Filtrar</button>
+            <button class="btn-novo" id="btn-novo-agendamento"><i class="fa-solid fa-plus"></i> Novo</button>
+          </div>
+        </div>
+        <!-- Filtro de profissionais (admin) -->
+        <div class="filter-bar admin-only" id="filter-bar" style="display:none;">
+          <div class="filter-chips" id="filter-chips"></div>
         </div>
         <div class="agenda-grid">
           <div class="calendar-card">
@@ -62,9 +71,7 @@
           </div>
           <div class="day-detail-card">
             <div class="day-detail-header" id="day-detail-header">Selecione uma data</div>
-            <div id="day-appointments">
-              <div class="no-appointments"><i class="fa-regular fa-clock"></i><p>Selecione uma data para ver os agendamentos</p></div>
-            </div>
+            <div class="timeline-container" id="day-appointments"></div>
           </div>
         </div>
       </div>
@@ -92,6 +99,78 @@
         <div class="professionals-grid" id="professionals-grid"></div>
       </div>
 
+      <!-- DASHBOARD (admin only) -->
+      <div class="page admin-only" id="page-dashboard">
+        <div class="page-header">
+          <h2>Dashboard</h2>
+        </div>
+        <div class="dash-filters">
+          <div class="form-group">
+            <label>Data Início</label>
+            <input type="date" id="dash-inicio">
+          </div>
+          <div class="form-group">
+            <label>Data Fim</label>
+            <input type="date" id="dash-fim">
+          </div>
+          <button class="btn-submit btn-dash-apply" onclick="loadDashboard()">Aplicar</button>
+        </div>
+        <div class="dash-grid">
+          <div class="dash-card">
+            <div class="dash-card-title">Total de Agendamentos</div>
+            <div class="dash-card-value" id="dash-total-ag">0</div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-card-title">Ticket Médio</div>
+            <div class="dash-card-value" id="dash-ticket">R$ 0,00</div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-card-title">Total Serviços</div>
+            <div class="dash-card-value" id="dash-total-servicos">0</div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-card-title">Faturamento Total</div>
+            <div class="dash-card-value" id="dash-faturamento">R$ 0,00</div>
+          </div>
+        </div>
+
+        <div class="dash-section">
+          <h3>Faturamento por Horário</h3>
+          <div class="dash-chart" id="dash-chart-horarios"></div>
+        </div>
+
+        <div class="dash-section">
+          <h3>Por Profissional</h3>
+          <div class="dash-table-wrapper">
+            <table class="dash-table">
+              <thead><tr><th>Profissional</th><th>Atendimentos</th><th>Serviços</th><th>Faturamento</th></tr></thead>
+              <tbody id="dash-prof-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="dash-row">
+          <div class="dash-section dash-half">
+            <h3>Top 10 Serviços</h3>
+            <div class="dash-table-wrapper">
+              <table class="dash-table">
+                <thead><tr><th>Serviço</th><th>Qtd</th><th>Valor Total</th></tr></thead>
+                <tbody id="dash-top-servicos"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="dash-section dash-half">
+            <h3>Top 10 Clientes</h3>
+            <div class="dash-table-wrapper">
+              <table class="dash-table">
+                <thead><tr><th>Cliente</th><th>Atendimentos</th></tr></thead>
+                <tbody id="dash-top-clientes"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </main>
   </div>
 
@@ -116,44 +195,30 @@
 
   <!-- MODAL: Agendamento -->
   <div class="modal-overlay" id="modal-agendamento">
-    <div class="modal">
+    <div class="modal modal-lg">
       <div class="modal-header">
         <h3 id="modal-agendamento-titulo">Novo Agendamento</h3>
         <button class="modal-close" onclick="closeModal('modal-agendamento')">&times;</button>
       </div>
       <form id="form-agendamento" onsubmit="saveAppointment(event)">
         <input type="hidden" id="ag-id" value="">
-        <div class="form-group">
-          <label>Cliente</label>
-          <input type="text" id="ag-cliente" required readonly>
-        </div>
-        <div class="form-group">
-          <label>Telefone</label>
-          <input type="tel" id="ag-telefone" required readonly>
-        </div>
         <div class="form-row">
           <div class="form-group">
-            <label>Profissional</label>
-            <select id="ag-profissional" onchange="onProfissionalChange()" required>
-              <option value="">Selecione...</option>
-            </select>
+            <label>Cliente</label>
+            <input type="text" id="ag-cliente" required readonly>
           </div>
           <div class="form-group">
-            <label>Serviço</label>
-            <select id="ag-servico" onchange="onServicoChange()" required>
-              <option value="">Selecione...</option>
-            </select>
+            <label>Telefone</label>
+            <input type="tel" id="ag-telefone" required readonly>
           </div>
         </div>
 
-        <!-- Grupo de cores (só aparece p/ Coloração) -->
-        <div class="form-group" id="grupo-cor" style="display:none;">
-          <label>Cor</label>
-          <div id="cores-container"></div>
-          <button type="button" class="btn-add-cor" id="btn-add-cor" onclick="adicionarCampoCorExtra()">
-            <i class="fa-solid fa-circle-plus"></i> Adicionar outra cor
-          </button>
-        </div>
+        <!-- Container de serviços (múltiplos) -->
+        <div id="servicos-container"></div>
+
+        <button type="button" class="btn-add-servico" id="btn-add-servico" onclick="adicionarBlocoServico()">
+          <i class="fa-solid fa-circle-plus"></i> Adicionar outro serviço
+        </button>
 
         <div class="form-row">
           <div class="form-group">
@@ -186,6 +251,42 @@
       <div class="modal-actions">
         <button class="btn-cancel" onclick="closeModal('modal-confirmar-exclusao')">Não</button>
         <button class="btn-delete" onclick="excluirAgendamento()">Sim, Excluir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Quantidade de Base (gramas) -->
+  <div class="modal-overlay" id="modal-base-qtd">
+    <div class="modal modal-small">
+      <div class="modal-header">
+        <h3>Quantidade de Base</h3>
+        <button class="modal-close" onclick="closeModal('modal-base-qtd')">&times;</button>
+      </div>
+      <div class="form-group">
+        <label>Selecione a quantidade (gramas)</label>
+        <select id="base-qtd-select"></select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal('modal-base-qtd')">Cancelar</button>
+        <button class="btn-submit" onclick="confirmarBaseQtd()">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Quantidade de Pigmentação (gramas) - FIX #3 -->
+  <div class="modal-overlay" id="modal-pigmento-qtd">
+    <div class="modal modal-small">
+      <div class="modal-header">
+        <h3>Quantidade de Pigmentação</h3>
+        <button class="modal-close" onclick="closeModal('modal-pigmento-qtd')">&times;</button>
+      </div>
+      <div class="form-group">
+        <label>Selecione a quantidade (gramas)</label>
+        <select id="pigmento-qtd-select"></select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal('modal-pigmento-qtd')">Cancelar</button>
+        <button class="btn-submit" onclick="confirmarPigmentoQtd()">Confirmar</button>
       </div>
     </div>
   </div>
