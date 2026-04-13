@@ -51,8 +51,8 @@ var pigmentOptions = [
 */
 var professionalAvatars = {
   'Rhai': 'rhai.png',
-  'Rubia': '',
-  'Pablo': ''
+  'Rubia': 'rubia.jpg',
+  'Pablo': 'pablo.jpg'
 };
 
 var clients = [];
