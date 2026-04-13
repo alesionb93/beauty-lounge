@@ -1142,3 +1142,477 @@ body {
 .btn-cores-svc:hover {
   background: var(--gold-bg) !important;
 }
+
+
+/* ============================================================ */
+/* CONFIGURAÇÕES PAGE                                            */
+/* ============================================================ */
+
+.config-layout {
+  display: flex;
+  gap: 0;
+  min-height: 500px;
+}
+
+.config-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius) 0 0 var(--radius);
+  padding: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.config-tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  font-family: var(--font);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+  text-align: left;
+  width: 100%;
+  border-left: 3px solid transparent;
+}
+
+.config-tab:hover {
+  background: var(--sidebar-active);
+  color: var(--text);
+}
+
+.config-tab.active {
+  background: var(--sidebar-active);
+  color: var(--gold);
+  border-left-color: var(--gold);
+}
+
+.config-tab i {
+  width: 20px;
+  text-align: center;
+  font-size: 1rem;
+}
+
+.config-content {
+  flex: 1;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: 32px 40px;
+  overflow-y: auto;
+}
+
+.config-panel {
+  display: none;
+}
+
+.config-panel.active {
+  display: block;
+}
+
+.config-section {
+  display: flex;
+  gap: 40px;
+  padding: 28px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.config-section:last-of-type {
+  border-bottom: none;
+}
+
+.config-section-left {
+  width: 280px;
+  flex-shrink: 0;
+}
+
+.config-section-left h3 {
+  font-family: var(--font-display);
+  color: var(--text);
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.config-help-text {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.config-section-right {
+  flex: 1;
+}
+
+.config-foto-area {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.perfil-avatar-wrapper {
+  flex-shrink: 0;
+}
+
+.avatar--xl {
+  width: 80px;
+  height: 80px;
+  min-width: 80px;
+  min-height: 80px;
+  font-size: 2rem;
+  border-width: 2px;
+}
+
+.perfil-foto-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.btn-upload-foto {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-border);
+  border-radius: 8px;
+  color: var(--gold);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: all var(--transition);
+}
+
+.btn-upload-foto:hover {
+  background: rgba(200,164,90,0.2);
+  border-color: var(--gold);
+}
+
+.btn-remover-foto {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid #e74c3c;
+  border-radius: 8px;
+  color: #e74c3c;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: all var(--transition);
+  letter-spacing: 0.5px;
+}
+
+.btn-remover-foto:hover {
+  background: rgba(231,76,60,0.1);
+}
+
+.config-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 24px;
+  margin-top: 8px;
+}
+
+.btn-alterar-senha {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, var(--gold), var(--gold-light));
+  border: none;
+  border-radius: 8px;
+  color: #0a0a0a;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: all var(--transition);
+  letter-spacing: 0.5px;
+}
+
+.btn-alterar-senha:hover {
+  box-shadow: 0 4px 16px rgba(200,164,90,0.3);
+  transform: translateY(-1px);
+}
+
+.btn-salvar-perfil {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  flex: none;
+  opacity: 0.7;
+  cursor: pointer;
+  transition: opacity var(--transition);
+}
+
+.btn-salvar-perfil:hover {
+  opacity: 1;
+}
+
+.config-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.config-section-header h3 {
+  font-family: var(--font-display);
+  color: var(--gold);
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.config-users-count {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+
+.config-users-table-wrapper {
+  overflow-x: auto;
+}
+
+.config-users-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.config-users-table th {
+  text-align: left;
+  padding: 14px 20px;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+}
+
+.config-users-table td {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.95rem;
+}
+
+.config-users-table tr:last-child td {
+  border-bottom: none;
+}
+
+.config-users-table tr:hover td {
+  background: var(--bg-card-hover);
+}
+
+.role-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.role-badge.admin {
+  background: var(--gold-bg);
+  color: var(--gold);
+  border: 1px solid var(--gold-border);
+}
+
+.role-badge.colaborador {
+  background: rgba(255,255,255,0.05);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.config-users-cards {
+  display: none;
+}
+
+.user-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.user-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.user-card-name {
+  font-weight: 600;
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.user-card-email {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+}
+
+.user-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.config-form-section {
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.config-form-section:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.config-form-section h4 {
+  font-family: var(--font-display);
+  color: var(--gold);
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+/* ===== CONFIGURAÇÕES RESPONSIVE ===== */
+@media (max-width: 900px) {
+  .config-layout {
+    flex-direction: column;
+  }
+
+  .config-sidebar {
+    width: 100%;
+    flex-direction: row;
+    border-radius: var(--radius) var(--radius) 0 0;
+    padding: 8px;
+    gap: 0;
+    overflow-x: auto;
+  }
+
+  .config-tab {
+    padding: 10px 16px;
+    border-left: none;
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+    justify-content: center;
+    flex: 1;
+  }
+
+  .config-tab.active {
+    border-left-color: transparent;
+    border-bottom-color: var(--gold);
+  }
+
+  .config-content {
+    border-left: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 var(--radius) var(--radius);
+    padding: 24px 20px;
+  }
+
+  .config-section {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .config-section-left {
+    width: 100%;
+  }
+
+  .config-actions {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .btn-alterar-senha,
+  .btn-salvar-perfil {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .config-users-table-wrapper {
+    display: none;
+  }
+
+  .config-users-cards {
+    display: block;
+  }
+
+  .config-foto-area {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* ============================================================ */
+/* PROFISSIONAIS CRUD                                            */
+/* ============================================================ */
+
+.edit-prof-section {
+  margin-bottom: 16px;
+}
+
+.edit-prof-foto-area,
+.criar-prof-foto-area {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.edit-prof-foto-actions,
+.criar-prof-foto-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.foto-recomendacao {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-style: italic;
+  margin: 0;
+}
+
+@media (max-width: 480px) {
+  .edit-prof-foto-area,
+  .criar-prof-foto-area {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .page-header-actions {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .page-header-actions .btn-novo,
+  .page-header-actions .btn-filter {
+    font-size: 0.8rem;
+    padding: 8px 12px;
+  }
+}
